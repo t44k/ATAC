@@ -93,7 +93,7 @@ alt_delete_element = "Delete"
 edit_element = "Enter" # Edit query param, header, basic auth, bearer token
 rename_element = "r" # Only used in the collections list (main menu)
 alt_rename_element = "F2"
-toggle_element = "Space" # Only used in tables (Query params, headers, cookies)
+toggle_element = "t" # Only used in tables (Query params, headers, cookies)
 duplicate_element = "Ctrl-d"
 
 [keybindings.request_selected]
@@ -107,16 +107,16 @@ request_settings = "s"
 
 next_view = "v"
 
-send_request = "F5"
-alt_send_request = "Ctrl-Enter" # Not received by every terminal
+send_request = "Space"
+alt_send_request = "F5" # Ctrl-Enter is not received by every terminal
 
 export_request = "Shift-E"
 
 # Only active on their own tab, so they share the same key
 [keybindings.request_selected.param_tabs]
-change_auth_method = "t"
-change_body_content_type = "t"
-change_message_type = "t"
+change_auth_method = "Ctrl-t"
+change_body_content_type = "Ctrl-t"
+change_message_type = "Ctrl-t"
 
 [keybindings.request_selected.result_tabs]
 scroll_up = "Ctrl-Up"

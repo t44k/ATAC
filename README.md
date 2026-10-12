@@ -294,14 +294,14 @@ Copied text goes to the system clipboard, or through the terminal (OSC 52) when 
 | Quit                                    | `q` (from the collections), `Ctrl-q` (anywhere)   |
 | Copy the mouse selection / hovered link | `Ctrl-c`                                          |
 | Copy the whole result tab               | `y`                                               |
-| Send / cancel the request               | `F5`, `Ctrl-Enter`                                |
+| Send / cancel the request               | `Space`, `F5`                                     |
 | Edit the URL                            | `Ctrl-l`, `u`                                     |
 | Change the HTTP method                  | `m`                                               |
 | Next / previous request tab             | `Tab` / `Shift-Tab`                               |
 | Next / previous result tab              | `]` / `[`                                         |
-| Change auth, body or message type       | `t` on that tab                                   |
+| Change auth, body or message type       | `Ctrl-t` on that tab                              |
 | Create / rename / delete / duplicate    | `n` / `r`, `F2` / `d`, `Delete` / `Ctrl-d`        |
-| Toggle a param, header or form field    | `Space`                                           |
+| Toggle a param, header or form field    | `t`                                               |
 | Scroll the result                       | Wheel, `PageUp`, `PageDown`, `Home`, `End`, `Ctrl-arrows` |
 | Back / cancel                           | `Esc`                                             |
 | Text inputs                             | `Ctrl-c`/`Ctrl-x`/`Ctrl-v`, `Ctrl-a`, `Shift-arrows`, `Ctrl-z`/`Ctrl-y`, `Enter` or `Ctrl-s` to save |

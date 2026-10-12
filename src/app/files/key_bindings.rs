@@ -221,7 +221,7 @@ impl Default for KeyBindings {
                     edit_element: key!(enter),
                     rename_element: key!(r),
                     alt_rename_element: key!(f2),
-                    toggle_element: key!(space),
+                    toggle_element: key!(t),
                     duplicate_element: key!(ctrl-d),
                 },
             },
@@ -241,14 +241,14 @@ impl Default for KeyBindings {
 
                 // Ctrl + enter doesn't register right on many platforms, F5 always does
                 // https://github.com/crossterm-rs/crossterm/issues/685
-                send_request: key!(f5),
-                alt_send_request: key!(ctrl-enter),
+                send_request: key!(space),
+                alt_send_request: key!(f5),
 
                 // Only active on their own tab, so they can share the same key
                 param_tabs: ParamTabs {
-                    change_auth_method: key!(t),
-                    change_body_content_type: key!(t),
-                    change_message_type: key!(t),
+                    change_auth_method: key!(ctrl-t),
+                    change_body_content_type: key!(ctrl-t),
+                    change_message_type: key!(ctrl-t),
                 },
                 result_tabs: ResultTabs {
                     scroll_up: key!(ctrl-up),
@@ -352,7 +352,7 @@ mod tests {
 
         assert_eq!(config.keybindings.main_menu.exit, key!(ctrl-x));
         assert_eq!(config.keybindings.generic.display_help, key!('?'));
-        assert_eq!(config.keybindings.request_selected.send_request, key!(f5));
+        assert_eq!(config.keybindings.request_selected.send_request, key!(space));
     }
 
     #[test]
