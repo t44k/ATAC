@@ -82,7 +82,11 @@ impl App<'_> {
             .filter_map(|tab| {
                 let text = match tab {
                     RequestResultTabs::Body => {
-                        if let Some(duration) = &request.response.duration {
+                        if request.is_pending && let Some(pending_since) = request.pending_since {
+                            // Seconds elapsed while the request is pending
+                            Some(format!("{} ({:02}s)", tab.to_string(), pending_since.elapsed().as_secs()))
+                        }
+                        else if let Some(duration) = &request.response.duration {
                             Some(format!("{} ({})", tab.to_string(), duration))
                         }
                         else {

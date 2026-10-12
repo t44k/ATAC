@@ -53,6 +53,7 @@ impl From<RequestV0_20_2> for Request {
             response: request.response,
             console_output: request.console_output,
             is_pending: request.is_pending,
+            pending_since: None,
             cancellation_token: request.cancellation_token,
         }
     }

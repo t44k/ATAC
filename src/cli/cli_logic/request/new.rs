@@ -105,6 +105,7 @@ pub fn create_request_from_new_request_command(request_name: String, new_request
         response: RequestResponse::default(),
         console_output: ConsoleOutput::default(),
         is_pending: false,
+        pending_since: None,
         cancellation_token: CancellationToken::new(),
     };
 
