@@ -71,29 +71,26 @@ impl App<'_> {
         Ok(())
     }
 
-    pub fn toggle_query_param(&mut self, collection_index: usize, request_index: usize, state: Option<bool>, row: usize) -> anyhow::Result<()> {
+    pub fn toggle_query_param(&mut self, collection_index: usize, request_index: usize, state: Option<bool>, row: usize) -> anyhow::Result<bool> {
         let local_selected_request = self.get_request_as_local_from_indexes(&(collection_index, request_index));
 
-        {
+        let new_state = {
             let mut selected_request = local_selected_request.write();
 
             let new_state = match state {
-                None => {
-                    let state = !selected_request.params[row].enabled;
-                    // Better user feedback
-                    println!("{state}");
-                    state
-                },
+                None => !selected_request.params[row].enabled,
                 Some(state) => state
             };
 
             info!("Query param state set to \"{new_state}\"");
 
             selected_request.params[row].enabled = new_state;
-        }
+
+            new_state
+        };
 
         self.save_collection_to_file(collection_index);
-        Ok(())
+        Ok(new_state)
     }
 
     pub fn duplicate_query_param(&mut self, collection_index: usize, request_index: usize, row: usize) -> anyhow::Result<()> {

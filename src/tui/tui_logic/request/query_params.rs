@@ -65,7 +65,7 @@ impl App<'_> {
         let selected_request_index = &self.collections_tree.selected.unwrap();
 
         match self.toggle_query_param(selected_request_index.0, selected_request_index.1, None, row) {
-            Ok(_) => {}
+            Ok(enabled) => self.toast(format!("Query param {}", if enabled { "enabled" } else { "disabled" })),
             Err(_) => return
         }
 
