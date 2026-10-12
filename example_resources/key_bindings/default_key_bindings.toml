@@ -1,7 +1,17 @@
+# Default key bindings.
+#
+# ATAC reads key bindings from the file given by the ATAC_KEY_BINDINGS environment variable,
+# otherwise from "keybindings.toml" in the app directory or in the config directory (e.g. ~/.config/atac/keybindings.toml).
+# The file only needs the keys you want to change, e.g.:
+#
+#   [keybindings.main_menu]
+#   exit = "x"
+#
 # Please avoid using Ctrl-v, it will paste your clipboard and trigger many unwanted event
 
 [keybindings.main_menu]
-exit = "q" # ctrl-c is implemented by default
+exit = "q"
+alt_exit = "Ctrl-q"
 
 unselect_request = "Left"
 expand_collection = "Right"
@@ -15,7 +25,10 @@ display_cookies = "c"
 display_logs = "l"
 
 [keybindings.generic]
-display_help = "Ctrl-h" # Take care to not overlap other inputs, the help can be triggered from anywhere
+display_help = "?" # Not available while typing in a text input, use alt_display_help instead
+alt_display_help = "F1"
+
+copy = "Ctrl-c" # Copies the text selected with the mouse, or the link under the mouse
 
 # E.g. Collection name, request name, URL, Header, Query param, Basic Auth, Bearer Token, Request body
 [keybindings.generic.text_input]
@@ -28,7 +41,9 @@ save_and_quit_area = "Ctrl-s"
 
 [keybindings.generic.text_input.mode.custom]
 copy = "Ctrl-c"
+cut = "Ctrl-x"
 paste = "Ctrl-v"
+select_all = "Ctrl-a"
 
 search = "Ctrl-f"
 system_editor = "Ctrl-e"
@@ -74,36 +89,46 @@ select = "Enter"
 [keybindings.generic.list_and_table_actions]
 create_element = "n"
 delete_element = "d"
+alt_delete_element = "Delete"
 edit_element = "Enter" # Edit query param, header, basic auth, bearer token
 rename_element = "r" # Only used in the collections list (main menu)
-toggle_element = "t" # Only used in tables (Query params, headers, cookies)
+alt_rename_element = "F2"
+toggle_element = "Space" # Only used in tables (Query params, headers, cookies)
 duplicate_element = "Ctrl-d"
 
 [keybindings.request_selected]
 param_next_tab = "Tab"
+param_previous_tab = "Shift-BackTab"
 
-change_url = "u"
+change_url = "Ctrl-l"
+alt_change_url = "u"
 change_method = "m"
 request_settings = "s"
 
 next_view = "v"
 
-send_request = "Space"
-alt_send_request = "Ctrl-Enter"
+send_request = "F5"
+alt_send_request = "Ctrl-Enter" # Not received by every terminal
 
 export_request = "Shift-E"
 
+# Only active on their own tab, so they share the same key
 [keybindings.request_selected.param_tabs]
-change_auth_method = "Ctrl-a"
-change_body_content_type = "Ctrl-b"
-change_message_type = "Ctrl-m"
+change_auth_method = "t"
+change_body_content_type = "t"
+change_message_type = "t"
 
 [keybindings.request_selected.result_tabs]
 scroll_up = "Ctrl-Up"
 scroll_down = "Ctrl-Down"
 scroll_left = "Ctrl-Left"
 scroll_right = "Ctrl-Right"
+scroll_page_up = "PageUp"
+scroll_page_down = "PageDown"
+scroll_to_top = "Home"
+scroll_to_bottom = "End"
 
-yank_response_part = "y" # Used to yank the current result tab (e.g. body, headers, cookies)
+yank_response_part = "y" # Copies the whole current result tab (e.g. body, headers, cookies)
 
-result_next_tab = "Shift-BackTab" # Will use param_next_tab depending on the selected view
+result_next_tab = "]" # Tab also works when only the result is displayed
+result_previous_tab = "["
