@@ -21,9 +21,10 @@ use crate::panic_error;
 #[command(
     version,
     about,
-    long_about = r#"ATAC is Arguably a Terminal API Client.
+    long_about = r#"ATTAC is a fork of ATAC (Arguably a Terminal API Client) with mouse support, text selection and simpler key bindings.
 It is based on well-known clients such as Postman, Insomnia, or even Bruno, but inside your terminal without any specific graphical environment needed.
-The philosophy of ATAC is to be free, account-less, and offline for now and forever."#,
+The philosophy of ATTAC is to be free, account-less, and offline for now and forever.
+It reads the ATAC files: collections, environments, atac.toml, keybindings.toml and theme.toml."#,
     styles = Styles::styled()
 )]
 pub struct Args {
@@ -55,7 +56,7 @@ pub struct Args {
 }
 
 /*
-atac
+attac
   - collection
       - list
       - info
@@ -115,7 +116,7 @@ pub enum Command {
     /// Create a completion file
     Completions(CompletionsCommand),
 
-    /// Generate ATAC man page
+    /// Generate ATTAC man page
     Man(ManCommand),
 }
 

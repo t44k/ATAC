@@ -74,7 +74,7 @@ impl App<'_> {
         // HEADER
 
         let header = Block::new()
-            .title("* ATAC *")
+            .title("* ATTAC *")
             .add_modifier(Modifier::BOLD)
             .add_modifier(Modifier::ITALIC)
             .title_alignment(Alignment::Center)

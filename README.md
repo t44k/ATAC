@@ -1,5 +1,10 @@
-ATAC ⚔📩
+ATTAC ⚔📩
 ===
+
+> **ATTAC** is a fork of [ATAC](https://github.com/Julien-cpsn/ATAC) with mouse support (clickable and scrollable panels),
+> text selection and copy everywhere, link hints in the results and simpler key bindings.
+> The executable is `attac`, it reads the usual ATAC files (`~/.config/atac`, `atac.toml`, `keybindings.toml`, `theme.toml`, `ATAC_*` variables).
+> See [Mouse, selection and keys](#mouse-selection-and-keys). The rest of this README is the upstream ATAC documentation.
 
 [![Rust](https://github.com/Julien-cpsn/ATAC/actions/workflows/rust.yml/badge.svg)](https://github.com/Julien-cpsn/ATAC/actions/workflows/rust.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)

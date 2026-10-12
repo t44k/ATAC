@@ -22,7 +22,7 @@ pub fn generate_completions(completions_command: &CompletionsCommand) -> anyhow:
     };
     
     let mut command = Args::command();
-    generate_to(shell, &mut command, "atac", path)?;
+    generate_to(shell, &mut command, "attac", path)?;
 
     println!("Completions file generated into \"{}\"", path.display());
 

@@ -97,7 +97,7 @@ lazy_static! {
         },
         KeyValue {
             enabled: true,
-            data: (String::from("user-agent"), format!("ATAC/v{}", env!("CARGO_PKG_VERSION"))),
+            data: (String::from("user-agent"), format!("ATTAC/v{}", env!("CARGO_PKG_VERSION"))),
         },
         KeyValue {
             enabled: true,
