@@ -83,8 +83,8 @@ impl App<'_> {
                 let text = match tab {
                     RequestResultTabs::Body => {
                         if request.is_pending && let Some(pending_since) = request.pending_since {
-                            // Seconds elapsed while the request is pending
-                            Some(format!("{} ({:02}s)", tab.to_string(), pending_since.elapsed().as_secs()))
+                            // Time elapsed while the request is pending, e.g. "02.34 sec"
+                            Some(format!("{} ({:05.2} sec)", tab.to_string(), pending_since.elapsed().as_secs_f64()))
                         }
                         else if let Some(duration) = &request.response.duration {
                             Some(format!("{} ({})", tab.to_string(), duration))

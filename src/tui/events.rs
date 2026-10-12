@@ -332,6 +332,9 @@ get_key_bindings! {
     }
 }
 
+/// Refresh rate while a pending request timer is displayed, fast enough for hundredths of seconds
+const PENDING_REFRESH_RATE: Duration = Duration::from_millis(40);
+
 /// Maximum number of events handled between two frames
 const MAX_EVENTS_PER_FRAME: usize = 64;
 
@@ -347,8 +350,15 @@ fn normalize_key(key: KeyCombination) -> KeyCombination {
 impl App<'_> {
     /// Handle events
     pub async fn handle_events(&mut self, terminal: &mut Terminal<CrosstermBackend<Stdout>>) {
-        // Refreshes the app every tick_rate
-        if event::poll(self.tick_rate).unwrap() {
+        // Refreshes the app every tick_rate, faster while the elapsed time of a pending request is displayed
+        let is_selected_request_pending = self.collections_tree.selected.is_some() && self.get_selected_request_as_local().read().is_pending;
+
+        let refresh_rate = match is_selected_request_pending {
+            true => PENDING_REFRESH_RATE,
+            false => self.tick_rate
+        };
+
+        if event::poll(refresh_rate).unwrap() {
             // Handle all the pending events before drawing again, mouse moves can come in bursts
             for _ in 0..MAX_EVENTS_PER_FRAME {
                 let event = event::read().unwrap();
