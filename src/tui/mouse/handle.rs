@@ -19,7 +19,7 @@ use crate::tui::utils::stateful::stateful_custom_table::StatefulCustomTable;
 use crate::tui::utils::stateful::text_input::TextInput;
 
 const DOUBLE_CLICK_DELAY: Duration = Duration::from_millis(400);
-const WHEEL_LINES: isize = 3;
+const WHEEL_LINES: isize = 1;
 
 impl App<'_> {
     pub async fn handle_mouse(&mut self, event: MouseEvent, terminal: &mut Terminal<CrosstermBackend<Stdout>>) {
