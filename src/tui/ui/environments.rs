@@ -5,6 +5,7 @@ use ratatui::widgets::{Block, Borders, Paragraph};
 
 use crate::app::app::App;
 use crate::app::files::theme::THEME;
+use crate::tui::mouse::MouseTarget;
 
 impl<'a> App<'a> {
     pub(super) fn render_environments(&mut self, frame: &mut Frame, rect: Rect) {
@@ -23,6 +24,7 @@ impl<'a> App<'a> {
                     .style(Style::new().fg(THEME.read().ui.secondary_foreground_color))
             );
 
-        frame.render_widget(current_environment_paragraph, rect)
+        frame.render_widget(current_environment_paragraph, rect);
+        self.hit(rect, MouseTarget::Environment);
     }
 }

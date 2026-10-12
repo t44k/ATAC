@@ -3,6 +3,7 @@ use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::Frame;
 
 use crate::app::app::App;
+use crate::tui::mouse::MouseTarget;
 use crate::tui::app_states::AppState::{EditingRequestAuthBasicPassword, EditingRequestAuthBasicUsername, SelectedRequest};
 use crate::tui::utils::stateful::text_input::SingleLineTextInput;
 
@@ -62,5 +63,7 @@ impl App<'_> {
 
         frame.render_widget(SingleLineTextInput(&mut self.auth_basic_username_text_input), basic_auth_layout[0]);
         frame.render_widget(SingleLineTextInput(&mut self.auth_basic_password_text_input), basic_auth_layout[1]);
+        self.hit(basic_auth_layout[0], MouseTarget::AuthField(0));
+        self.hit(basic_auth_layout[1], MouseTarget::AuthField(1));
     }
 }

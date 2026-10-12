@@ -16,7 +16,7 @@ impl App<'_> {
 
             self.display_request_export.content = export_result.clone();
             self.display_request_export.title = export_format.to_string();
-            self.display_request_export.horizontal_scrollbar.set_max_scroll(App::get_max_str_len(export_result.lines()) as u16);
+            self.display_request_export.horizontal_scrollbar.set_max_scroll(App::get_max_str_len(export_result.lines()));
 
             let extension = export_format.to_extension();
             let lines = match extension {
@@ -26,8 +26,7 @@ impl App<'_> {
 
             self.display_request_export.vertical_scrollbar.top();
             self.display_request_export.horizontal_scrollbar.top();
-            self.display_request_export.vertical_scrollbar.set_max_scroll(lines.len() as u16 - 1);
-            self.display_request_export.horizontal_scrollbar.set_max_scroll(0);
+            self.display_request_export.vertical_scrollbar.set_max_scroll(lines.len().saturating_sub(1));
             self.display_request_export.lines = lines;
         }
 

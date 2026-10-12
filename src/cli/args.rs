@@ -184,9 +184,13 @@ fn choose_app_directory(path_buf: Option<PathBuf>, config_directory: &Option<Pat
             Ok(env_directory) => expand_tilde(PathBuf::from(env_directory)),
             
             // No ATAC_MAIN_DIR env variable
-            Err(_) => match config_directory {
-                Some(config_directory) => config_directory.clone(),
-                None => panic_error("No directory provided, provide one either with `--directory <dir>` or via the environment variable `ATAC_MAIN_DIR`")
+            Err(_) => match env::current_dir() {
+                // A project directory with its own ATAC config
+                Ok(current_directory) if current_directory.join("atac.toml").is_file() => current_directory,
+                _ => match config_directory {
+                    Some(config_directory) => config_directory.clone(),
+                    None => panic_error("No directory provided, provide one either with `--directory <dir>` or via the environment variable `ATAC_MAIN_DIR`")
+                }
             }
         }
     }

@@ -303,6 +303,7 @@ dependencies = [
  "tui-big-text",
  "tui-scrollview",
  "tui-tree-widget",
+ "unicode-width",
  "uuid",
  "walkdir",
 ]

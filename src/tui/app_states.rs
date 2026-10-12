@@ -3,7 +3,7 @@ use lazy_static::lazy_static;
 use parking_lot::RwLock;
 use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::prelude::Span;
-use ratatui::style::{Color, Stylize};
+use ratatui::style::Stylize;
 use ratatui::text::Line;
 use strum::Display;
 
@@ -150,94 +150,6 @@ pub enum AppState {
     DisplayingRequestExport
 }
 
-pub fn next_app_state(app_state: &AppState) -> AppState {
-    match app_state {
-        Normal => DisplayingEnvEditor,
-        DisplayingEnvEditor => EditingEnvVariable,
-        EditingEnvVariable => DisplayingCookies,
-        DisplayingCookies => EditingCookies,
-        EditingCookies => DisplayingLogs,
-        DisplayingLogs => ChoosingElementToCreate,
-        ChoosingElementToCreate => CreatingNewCollection,
-        CreatingNewCollection => CreatingNewRequest,
-        CreatingNewRequest => DeletingCollection,
-        DeletingCollection => DeletingRequest,
-        DeletingRequest => RenamingCollection,
-        RenamingCollection => RenamingRequest,
-        RenamingRequest => SelectedRequest,
-        SelectedRequest => EditingRequestUrl,
-        EditingRequestUrl => EditingRequestParam,
-        EditingRequestParam => EditingRequestAuthBasicUsername,
-        EditingRequestAuthBasicUsername => EditingRequestAuthBasicPassword,
-        EditingRequestAuthBasicPassword => EditingRequestAuthBearerToken,
-        EditingRequestAuthBearerToken => EditingRequestAuthJwtSecret,
-        EditingRequestAuthJwtSecret => EditingRequestAuthJwtPayload,
-        EditingRequestAuthJwtPayload => EditingRequestAuthDigestUsername,
-        EditingRequestAuthDigestUsername => EditingRequestAuthDigestPassword,
-        EditingRequestAuthDigestPassword => EditingRequestAuthDigestDomains,
-        EditingRequestAuthDigestDomains => EditingRequestAuthDigestRealm,
-        EditingRequestAuthDigestRealm => EditingRequestAuthDigestNonce,
-        EditingRequestAuthDigestNonce => EditingRequestAuthDigestOpaque,
-        EditingRequestAuthDigestOpaque => EditingRequestHeader,
-        EditingRequestHeader => EditingRequestBodyTable,
-        EditingRequestBodyTable => EditingRequestBodyFile,
-        EditingRequestBodyFile => EditingRequestBodyString,
-        EditingRequestBodyString => EditingRequestMessage,
-        EditingRequestMessage => EditingMqttFormField,
-        EditingMqttFormField => EditingMqttSubscription,
-        EditingMqttSubscription => EditingPreRequestScript,
-        EditingPreRequestScript => EditingPostRequestScript,
-        EditingPostRequestScript => EditingRequestSettings,
-        EditingRequestSettings => ChoosingRequestExportFormat,
-        ChoosingRequestExportFormat => DisplayingRequestExport,
-        DisplayingRequestExport => Normal
-    }
-}
-
-pub fn previous_app_state(app_state: &AppState) -> AppState {
-    match app_state {
-        Normal => EditingRequestSettings,
-        DisplayingEnvEditor => Normal,
-        EditingEnvVariable => DisplayingEnvEditor,
-        DisplayingCookies => EditingEnvVariable,
-        EditingCookies => DisplayingCookies,
-        DisplayingLogs => EditingCookies,
-        ChoosingElementToCreate => DisplayingLogs,
-        CreatingNewCollection => ChoosingElementToCreate,
-        CreatingNewRequest => CreatingNewCollection,
-        DeletingCollection => CreatingNewRequest,
-        DeletingRequest => DeletingCollection,
-        RenamingCollection => DeletingRequest,
-        RenamingRequest => RenamingCollection,
-        SelectedRequest => RenamingRequest,
-        EditingRequestUrl => SelectedRequest,
-        EditingRequestParam => EditingRequestUrl,
-        EditingRequestAuthBasicUsername => EditingRequestParam,
-        EditingRequestAuthBasicPassword => EditingRequestAuthBasicUsername,
-        EditingRequestAuthBearerToken => EditingRequestAuthBasicPassword,
-        EditingRequestAuthJwtSecret => EditingRequestAuthBearerToken,
-        EditingRequestAuthJwtPayload => EditingRequestAuthJwtSecret,
-        EditingRequestAuthDigestUsername => EditingRequestAuthJwtPayload,
-        EditingRequestAuthDigestPassword => EditingRequestAuthDigestUsername,
-        EditingRequestAuthDigestDomains => EditingRequestAuthDigestPassword,
-        EditingRequestAuthDigestRealm => EditingRequestAuthDigestDomains,
-        EditingRequestAuthDigestNonce => EditingRequestAuthDigestRealm,
-        EditingRequestAuthDigestOpaque => EditingRequestAuthDigestNonce,
-        EditingRequestHeader => EditingRequestAuthDigestOpaque,
-        EditingRequestBodyTable => EditingRequestHeader,
-        EditingRequestBodyFile => EditingRequestBodyTable,
-        EditingRequestBodyString => EditingRequestBodyFile,
-        EditingRequestMessage => EditingRequestBodyString,
-        EditingMqttFormField => EditingRequestMessage,
-        EditingMqttSubscription => EditingMqttFormField,
-        EditingPreRequestScript => EditingMqttSubscription,
-        EditingPostRequestScript => EditingPreRequestScript,
-        EditingRequestSettings => EditingPostRequestScript,
-        ChoosingRequestExportFormat => EditingRequestSettings,
-        DisplayingRequestExport => ChoosingRequestExportFormat
-    }
-}
-
 impl AppState {
     pub fn get_available_events(&self, request_view: RequestView, request_param_tab: RequestParamsTabs, protocol: Option<Protocol>, is_there_any_env: bool) -> Vec<AppEvent> {
         let key_bindings = KEY_BINDINGS.read();
@@ -245,9 +157,9 @@ impl AppState {
         match self {
             Normal => {
                 let mut base_events = vec![
-                    ExitApp(EventKeyBinding::new(vec![key_bindings.main_menu.exit, key!(ctrl-c)], "Exit", Some("Exit"))),
+                    ExitApp(EventKeyBinding::new(vec![key_bindings.main_menu.exit, key_bindings.main_menu.alt_exit], "Exit", Some("Quit"))),
 
-                    Documentation(EventKeyBinding::new(vec![key_bindings.generic.display_help], "Display help", Some("Help"))),
+                    Documentation(EventKeyBinding::new(vec![key_bindings.generic.display_help, key_bindings.generic.alt_display_help], "Display help", Some("Help"))),
 
                     MoveCollectionCursorUp(EventKeyBinding::new(vec![key_bindings.generic.navigation.move_cursor_up], "Move up", Some("Up"))),
                     MoveCollectionCursorDown(EventKeyBinding::new(vec![key_bindings.generic.navigation.move_cursor_down], "Move down", Some("Down"))),
@@ -257,8 +169,8 @@ impl AppState {
                     ExpandCollection(EventKeyBinding::new(vec![key_bindings.main_menu.expand_collection], "Expand", None)),
 
                     CreateElement(EventKeyBinding::new(vec![key_bindings.generic.list_and_table_actions.create_element], "Create element", Some("Create"))),
-                    DeleteElement(EventKeyBinding::new(vec![key_bindings.generic.list_and_table_actions.delete_element], "Delete element", None)),
-                    RenameElement(EventKeyBinding::new(vec![key_bindings.generic.list_and_table_actions.rename_element], "Rename element", None)),
+                    DeleteElement(EventKeyBinding::new(vec![key_bindings.generic.list_and_table_actions.delete_element, key_bindings.generic.list_and_table_actions.alt_delete_element], "Delete element", None)),
+                    RenameElement(EventKeyBinding::new(vec![key_bindings.generic.list_and_table_actions.rename_element, key_bindings.generic.list_and_table_actions.alt_rename_element], "Rename element", None)),
                     DuplicateElement(EventKeyBinding::new(vec![key_bindings.generic.list_and_table_actions.duplicate_element], "Duplicate element", None)),
 
                     MoveElementUp(EventKeyBinding::new(vec![key_bindings.main_menu.move_request_up], "Move request up", None)),
@@ -293,7 +205,7 @@ impl AppState {
                 EnvVariablesMoveRight(EventKeyBinding::new(vec![key_bindings.generic.navigation.move_cursor_right], "Move right", Some("Right"))),
 
                 CreateEnvVariable(EventKeyBinding::new(vec![key_bindings.generic.list_and_table_actions.create_element], "Create env variable", Some("Create variable"))),
-                DeleteEnvVariable(EventKeyBinding::new(vec![key_bindings.generic.list_and_table_actions.delete_element], "Delete env variable", Some("Delete variable"))),
+                DeleteEnvVariable(EventKeyBinding::new(vec![key_bindings.generic.list_and_table_actions.delete_element, key_bindings.generic.list_and_table_actions.alt_delete_element], "Delete env variable", Some("Delete variable"))),
             ],
             EditingEnvVariable => [
                 vec![
@@ -311,7 +223,7 @@ impl AppState {
                 CookiesMoveLeft(EventKeyBinding::new(vec![key_bindings.generic.navigation.move_cursor_left], "Move left", Some("Left"))),
                 CookiesMoveRight(EventKeyBinding::new(vec![key_bindings.generic.navigation.move_cursor_right], "Move right", Some("Right"))),
 
-                DeleteCookie(EventKeyBinding::new(vec![key_bindings.generic.list_and_table_actions.delete_element], "Delete cookie", Some("Delete"))),
+                DeleteCookie(EventKeyBinding::new(vec![key_bindings.generic.list_and_table_actions.delete_element, key_bindings.generic.list_and_table_actions.alt_delete_element], "Delete cookie", Some("Delete"))),
             ],
             EditingCookies => vec![
                 Documentation(EventKeyBinding::new(vec![*EMPTY_KEY], "Not implemented yet", None))
@@ -395,18 +307,18 @@ impl AppState {
                 };
 
                 let mut base_events: Vec<AppEvent> = vec![
-                    ExitApp(EventKeyBinding::new(vec![key!(ctrl-c)], "Exit app", None)),
+                    ExitApp(EventKeyBinding::new(vec![key_bindings.main_menu.alt_exit], "Exit app", None)),
 
-                    GoBackToLastState(EventKeyBinding::new(vec![key_bindings.generic.navigation.go_back], "Quit to main menu", Some("Quit"))),
-                    Documentation(EventKeyBinding::new(vec![key_bindings.generic.display_help], "Display help", Some("Help"))),
+                    GoBackToLastState(EventKeyBinding::new(vec![key_bindings.generic.navigation.go_back], "Back to collections", Some("Back"))),
+                    Documentation(EventKeyBinding::new(vec![key_bindings.generic.display_help, key_bindings.generic.alt_display_help], "Display help", Some("Help"))),
 
-                    EditUrl(EventKeyBinding::new(vec![key_bindings.request_selected.change_url], "Edit URL", Some("URL"))),
+                    SendRequest(EventKeyBinding::new(vec![key_bindings.request_selected.send_request, key_bindings.request_selected.alt_send_request], "Send/cancel request", Some("Send"))),
+
+                    EditUrl(EventKeyBinding::new(vec![key_bindings.request_selected.change_url, key_bindings.request_selected.alt_change_url], "Edit URL", Some("URL"))),
 
                     EditSettings(EventKeyBinding::new(vec![key_bindings.request_selected.request_settings], "Request settings", None)),
 
                     NextView(EventKeyBinding::new(vec![key_bindings.request_selected.next_view], "Next view", None)),
-
-                    SendRequest(EventKeyBinding::new(vec![key_bindings.request_selected.send_request, key_bindings.request_selected.alt_send_request], "Send/cancel request", Some("Send/Cancel"))),
                 ];
                 
                 if is_there_any_env {
@@ -433,26 +345,28 @@ impl AppState {
                 if params_events_allowed {
                     base_param_tabs_events = vec![
                         NextParamTab(EventKeyBinding::new(vec![key_bindings.request_selected.param_next_tab], "Next param tab", Some("Next tab"))),
-
-                        ModifyRequestAuthMethod(EventKeyBinding::new(vec![key_bindings.request_selected.param_tabs.change_auth_method], "Modify auth method", None)),
+                        PreviousParamTab(EventKeyBinding::new(vec![key_bindings.request_selected.param_previous_tab], "Previous param tab", None)),
                     ];
 
-                    if let Some(protocol) = protocol {
-                        let protocol_specific = match protocol {
-                            Protocol::HttpRequest(_) => vec![
-                                EditMethod(EventKeyBinding::new(vec![key_bindings.request_selected.change_method], "Change method", Some("Method"))),
-                                ModifyRequestBodyContentType(EventKeyBinding::new(vec![key_bindings.request_selected.param_tabs.change_body_content_type], "Modify body content-type", None)),
-                            ],
-                            Protocol::WsRequest(_) => vec![
-                                ModifyRequestMessageType(EventKeyBinding::new(vec![key_bindings.request_selected.param_tabs.change_message_type], "Modify message type", None)),
-                            ],
-                            Protocol::MqttRequest(_) => vec![
-                                ModifyRequestMessageType(EventKeyBinding::new(vec![key_bindings.request_selected.param_tabs.change_message_type], "Modify payload type", None)),
-                            ]
-                        };
+                    if let Some(protocol) = &protocol && matches!(protocol, Protocol::HttpRequest(_)) {
+                        base_param_tabs_events.push(EditMethod(EventKeyBinding::new(vec![key_bindings.request_selected.change_method], "Change method", Some("Method"))));
+                    }
 
-                        base_param_tabs_events.extend(protocol_specific);
-
+                    // The type changing keys are only active on their own tab, so they can share the same key
+                    match (request_param_tab, &protocol) {
+                        (RequestParamsTabs::Auth, _) => base_param_tabs_events.push(
+                            ModifyRequestAuthMethod(EventKeyBinding::new(vec![key_bindings.request_selected.param_tabs.change_auth_method], "Change auth method", Some("Auth type")))
+                        ),
+                        (RequestParamsTabs::Body, _) => base_param_tabs_events.push(
+                            ModifyRequestBodyContentType(EventKeyBinding::new(vec![key_bindings.request_selected.param_tabs.change_body_content_type], "Change body content-type", Some("Body type")))
+                        ),
+                        (RequestParamsTabs::Message, _) => base_param_tabs_events.push(
+                            ModifyRequestMessageType(EventKeyBinding::new(vec![key_bindings.request_selected.param_tabs.change_message_type], "Change message type", Some("Message type")))
+                        ),
+                        (RequestParamsTabs::MqttPublish, _) => base_param_tabs_events.push(
+                            ModifyRequestMessageType(EventKeyBinding::new(vec![key_bindings.request_selected.param_tabs.change_message_type], "Change payload type", Some("Payload type")))
+                        ),
+                        _ => {}
                     }
 
                     let param_tabs_events = match request_param_tab {
@@ -465,7 +379,7 @@ impl AppState {
                             RequestQueryParamsMoveRight(EventKeyBinding::new(vec![key_bindings.generic.navigation.move_cursor_right], "Move right", None)),
 
                             CreateRequestQueryParam(EventKeyBinding::new(vec![key_bindings.generic.list_and_table_actions.create_element], "Create query param", None)),
-                            DeleteRequestQueryParam(EventKeyBinding::new(vec![key_bindings.generic.list_and_table_actions.delete_element], "Delete query param", None)),
+                            DeleteRequestQueryParam(EventKeyBinding::new(vec![key_bindings.generic.list_and_table_actions.delete_element, key_bindings.generic.list_and_table_actions.alt_delete_element], "Delete query param", None)),
                             ToggleRequestQueryParam(EventKeyBinding::new(vec![key_bindings.generic.list_and_table_actions.toggle_element], "Toggle query param", None)),
                             DuplicateRequestQueryParam(EventKeyBinding::new(vec![key_bindings.generic.list_and_table_actions.duplicate_element], "Duplicate query param", None)),
                         ],
@@ -486,7 +400,7 @@ impl AppState {
                             RequestHeadersMoveRight(EventKeyBinding::new(vec![key_bindings.generic.navigation.move_cursor_right], "Move right", None)),
 
                             CreateRequestHeader(EventKeyBinding::new(vec![key_bindings.generic.list_and_table_actions.create_element], "Create header", None)),
-                            DeleteRequestHeader(EventKeyBinding::new(vec![key_bindings.generic.list_and_table_actions.delete_element], "Delete header", None)),
+                            DeleteRequestHeader(EventKeyBinding::new(vec![key_bindings.generic.list_and_table_actions.delete_element, key_bindings.generic.list_and_table_actions.alt_delete_element], "Delete header", None)),
                             ToggleRequestHeader(EventKeyBinding::new(vec![key_bindings.generic.list_and_table_actions.toggle_element], "Toggle header", None)),
                             DuplicateRequestHeader(EventKeyBinding::new(vec![key_bindings.generic.list_and_table_actions.duplicate_element], "Duplicate header", None)),
                         ],
@@ -499,7 +413,7 @@ impl AppState {
                             RequestBodyTableMoveRight(EventKeyBinding::new(vec![key_bindings.generic.navigation.move_cursor_right], "Move right", None)),
 
                             CreateRequestBodyTableElement(EventKeyBinding::new(vec![key_bindings.generic.list_and_table_actions.create_element], "Create form element", None)),
-                            DeleteRequestBodyTableElement(EventKeyBinding::new(vec![key_bindings.generic.list_and_table_actions.delete_element], "Delete form element", None)),
+                            DeleteRequestBodyTableElement(EventKeyBinding::new(vec![key_bindings.generic.list_and_table_actions.delete_element, key_bindings.generic.list_and_table_actions.alt_delete_element], "Delete form element", None)),
                             ToggleRequestBodyTableElement(EventKeyBinding::new(vec![key_bindings.generic.list_and_table_actions.toggle_element], "Toggle form element", None)),
                             DuplicateRequestBodyTableElement(EventKeyBinding::new(vec![key_bindings.generic.list_and_table_actions.duplicate_element], "Duplicate form element", None)),
                         ],
@@ -523,7 +437,7 @@ impl AppState {
                             MqttSubscriptionsMoveRight(EventKeyBinding::new(vec![key_bindings.generic.navigation.move_cursor_right], "Move right", None)),
 
                             CreateMqttSubscription(EventKeyBinding::new(vec![key_bindings.generic.list_and_table_actions.create_element], "Create subscription", None)),
-                            DeleteMqttSubscription(EventKeyBinding::new(vec![key_bindings.generic.list_and_table_actions.delete_element], "Delete subscription", None)),
+                            DeleteMqttSubscription(EventKeyBinding::new(vec![key_bindings.generic.list_and_table_actions.delete_element, key_bindings.generic.list_and_table_actions.alt_delete_element], "Delete subscription", None)),
                             ToggleMqttSubscription(EventKeyBinding::new(vec![key_bindings.generic.list_and_table_actions.toggle_element], "Toggle subscription", None)),
                             DuplicateMqttSubscription(EventKeyBinding::new(vec![key_bindings.generic.list_and_table_actions.duplicate_element], "Duplicate subscription", None)),
                         ],
@@ -538,7 +452,10 @@ impl AppState {
                 }
                 else {
                     base_events.push(
-                        NextResultTab(EventKeyBinding::new(vec![key_bindings.request_selected.param_next_tab], "Next result tab", Some("Next tab"))),
+                        NextResultTab(EventKeyBinding::new(vec![key_bindings.request_selected.param_next_tab, key_bindings.request_selected.result_tabs.result_next_tab], "Next result tab", Some("Next tab"))),
+                    );
+                    base_events.push(
+                        PreviousResultTab(EventKeyBinding::new(vec![key_bindings.request_selected.param_previous_tab, key_bindings.request_selected.result_tabs.result_previous_tab], "Previous result tab", None)),
                     );
                 }
 
@@ -548,14 +465,21 @@ impl AppState {
                         ScrollResultDown(EventKeyBinding::new(vec![key_bindings.request_selected.result_tabs.scroll_down], "Scroll result down", None)),
                         ScrollResultLeft(EventKeyBinding::new(vec![key_bindings.request_selected.result_tabs.scroll_left], "Scroll result left", None)),
                         ScrollResultRight(EventKeyBinding::new(vec![key_bindings.request_selected.result_tabs.scroll_right], "Scroll result right", None)),
-                    
-                        CopyResponsePart(EventKeyBinding::new(vec![key_bindings.request_selected.result_tabs.yank_response_part], "Yank response part", Some("Yank"))),
+                        ScrollResultPageUp(EventKeyBinding::new(vec![key_bindings.request_selected.result_tabs.scroll_page_up], "Scroll result page up", None)),
+                        ScrollResultPageDown(EventKeyBinding::new(vec![key_bindings.request_selected.result_tabs.scroll_page_down], "Scroll result page down", None)),
+                        ScrollResultTop(EventKeyBinding::new(vec![key_bindings.request_selected.result_tabs.scroll_to_top], "Scroll result to top", None)),
+                        ScrollResultBottom(EventKeyBinding::new(vec![key_bindings.request_selected.result_tabs.scroll_to_bottom], "Scroll result to bottom", None)),
+
+                        CopyResponsePart(EventKeyBinding::new(vec![key_bindings.request_selected.result_tabs.yank_response_part], "Copy whole result tab", Some("Copy result"))),
                     ];
 
                     if params_events_allowed {
                         base_events.push(
                             NextResultTab(EventKeyBinding::new(vec![key_bindings.request_selected.result_tabs.result_next_tab], "Next result tab", None)),
-                        )
+                        );
+                        base_events.push(
+                            PreviousResultTab(EventKeyBinding::new(vec![key_bindings.request_selected.result_tabs.result_previous_tab], "Previous result tab", None)),
+                        );
                     }
                 }
 
@@ -766,7 +690,7 @@ impl AppState {
                 ScrollRequestExportLeft(EventKeyBinding::new(vec![key_bindings.request_selected.result_tabs.scroll_left], "Scroll request export left", None)),
                 ScrollRequestExportRight(EventKeyBinding::new(vec![key_bindings.request_selected.result_tabs.scroll_right], "Scroll request export right", None)),
 
-                CopyRequestExport(EventKeyBinding::new(vec![key_bindings.request_selected.result_tabs.yank_response_part], "Yank request export", Some("Yank"))),
+                CopyRequestExport(EventKeyBinding::new(vec![key_bindings.request_selected.result_tabs.yank_response_part], "Copy request export", Some("Copy"))),
             ]
         }
     }
@@ -868,6 +792,11 @@ fn generate_text_input_documentation(text_input_mode: TextAreaMode, single_line:
             }
 
             initial.extend(vec![
+                Documentation(EventKeyBinding::new(vec![custom_text_area_bindings.copy], "Copy selection", None)),
+                Documentation(EventKeyBinding::new(vec![custom_text_area_bindings.cut], "Cut selection", None)),
+                Documentation(EventKeyBinding::new(vec![custom_text_area_bindings.paste], "Paste", None)),
+                Documentation(EventKeyBinding::new(vec![custom_text_area_bindings.select_all], "Select all", None)),
+                Documentation(EventKeyBinding::new(vec![*EMPTY_KEY], "Shift + arrows or mouse drag to select", None)),
                 Documentation(EventKeyBinding::new(vec![custom_text_area_bindings.move_cursor_line_start], "Move cursor line start", Some("Home"))),
                 Documentation(EventKeyBinding::new(vec![custom_text_area_bindings.move_cursor_line_end], "Move cursor line end", Some("End"))),
                 Documentation(EventKeyBinding::new(vec![custom_text_area_bindings.skip_word_left], "Skip word left", None)),
@@ -883,27 +812,6 @@ fn generate_text_input_documentation(text_input_mode: TextAreaMode, single_line:
     }
 
     initial
-}
-
-pub fn event_available_keys_to_spans(events: &Vec<AppEvent>, fg_color: Color, bg_color: Color, short_only: bool) -> Vec<Vec<Span<'_>>> {
-    let mut spans: Vec<Vec<Span>> = vec![];
-
-    for event in events.iter() {
-        let is_documentation = match event {
-            Documentation(_) => true,
-            _ => false
-        };
-
-        let event_key_bindings = event.get_event_key_bindings();
-
-        if let Some(key_spans) = event_key_bindings.to_spans(fg_color, bg_color, short_only, is_documentation) {
-            spans.push(key_spans);
-        }
-    }
-
-    spans.last_mut().unwrap().pop();
-
-    return spans;
 }
 
 lazy_static! {

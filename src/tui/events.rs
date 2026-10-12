@@ -1,7 +1,8 @@
 use std::io::Stdout;
-use crokey::KeyCombination;
+use std::time::Duration;
+use crokey::{KeyCombination, OneToThree};
 use ratatui::crossterm::event;
-use ratatui::crossterm::event::{Event, KeyEventKind};
+use ratatui::crossterm::event::{Event, KeyCode, KeyEventKind, KeyModifiers};
 use ratatui::prelude::{CrosstermBackend};
 use ratatui::Terminal;
 use tracing::{debug};
@@ -121,6 +122,7 @@ get_key_bindings! {
         /* Param tabs */
 
         NextParamTab(EventKeyBinding),
+        PreviousParamTab(EventKeyBinding),
         ModifyRequestAuthMethod(EventKeyBinding),
         ModifyRequestBodyContentType(EventKeyBinding),
         ModifyRequestMessageType(EventKeyBinding),
@@ -186,11 +188,16 @@ get_key_bindings! {
         /* Result tabs */
 
         NextResultTab(EventKeyBinding),
+        PreviousResultTab(EventKeyBinding),
 
         ScrollResultUp(EventKeyBinding),
         ScrollResultDown(EventKeyBinding),
         ScrollResultLeft(EventKeyBinding),
         ScrollResultRight(EventKeyBinding),
+        ScrollResultPageUp(EventKeyBinding),
+        ScrollResultPageDown(EventKeyBinding),
+        ScrollResultTop(EventKeyBinding),
+        ScrollResultBottom(EventKeyBinding),
 
         /* Others */
 
@@ -325,23 +332,30 @@ get_key_bindings! {
     }
 }
 
+/// Maximum number of events handled between two frames
+const MAX_EVENTS_PER_FRAME: usize = 64;
+
+/// Some terminals report shift with symbols typed with shift (e.g. "?"), the bindings don't expect it
+fn normalize_key(key: KeyCombination) -> KeyCombination {
+    if key.modifiers == KeyModifiers::SHIFT && let OneToThree::One(KeyCode::Char(char)) = key.codes && !char.is_alphabetic() {
+        return KeyCombination::new(KeyCode::Char(char), KeyModifiers::NONE);
+    }
+
+    key
+}
+
 impl App<'_> {
     /// Handle events
     pub async fn handle_events(&mut self, terminal: &mut Terminal<CrosstermBackend<Stdout>>) {
         // Refreshes the app every tick_rate
         if event::poll(self.tick_rate).unwrap() {
-            // Block while a key is pressed
-            if let Event::Key(key_event) = event::read().unwrap() {
-                // We do not need
-                if key_event.kind != KeyEventKind::Press {
-                    return;
-                }
+            // Handle all the pending events before drawing again, mouse moves can come in bursts
+            for _ in 0..MAX_EVENTS_PER_FRAME {
+                let event = event::read().unwrap();
+                self.handle_event(event, terminal).await;
 
-                let key = KeyCombination::from(key_event);
-                let is_input_missed = self.handle_key(key, terminal).await;
-
-                if !is_input_missed {
-                    debug!("Key pressed: {}", key);
+                if self.should_quit || !event::poll(Duration::ZERO).unwrap() {
+                    break;
                 }
             }
         }
@@ -351,7 +365,6 @@ impl App<'_> {
             // A connection can receive messages or end while no request is selected, e.g. once deleted
             if self.collections_tree.selected.is_some() {
                 self.tui_highlight_response_body_and_console();
-                self.tui_refresh_result_scrollbars();
             }
 
             if self.config.should_save_requests_response() {
@@ -365,32 +378,70 @@ impl App<'_> {
         }
     }
 
-    async fn handle_key(&mut self, key: KeyCombination, terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> bool {
+    async fn handle_event(&mut self, event: Event, terminal: &mut Terminal<CrosstermBackend<Stdout>>) {
+        match event {
+            Event::Key(key_event) => {
+                // Only key presses are handled
+                if key_event.kind != KeyEventKind::Press {
+                    return;
+                }
+
+                let key = normalize_key(KeyCombination::from(key_event));
+                let is_input_missed = self.handle_key(key, terminal).await;
+
+                if !is_input_missed {
+                    debug!("Key pressed: {}", key);
+                }
+            },
+            Event::Mouse(mouse_event) => self.handle_mouse(mouse_event, terminal).await,
+            Event::Paste(text) => self.handle_paste(text),
+            _ => {}
+        }
+    }
+
+    pub(crate) async fn handle_key(&mut self, key: KeyCombination, terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> bool {
         // Debug tool
         //dbg!("{}", key.to_string());
 
-        {
-            let key_bindings = KEY_BINDINGS.read();
+        let key_bindings = *KEY_BINDINGS.read();
 
-            // Help is being displayed
-            if self.should_display_help {
-                match key {
-                    key if key == key_bindings.generic.navigation.go_back => self.should_display_help = false,
-                    key if key == key_bindings.generic.navigation.move_cursor_left => self.help_popup.previous_page(),
-                    key if key == key_bindings.generic.navigation.move_cursor_right => self.help_popup.next_page(),
-
-                    _ => {}
-                }
-
-                // Avoid triggering other keys
+        // Copy the mouse selection or the hovered link, otherwise the key goes to the text input being edited
+        if key == key_bindings.generic.copy {
+            if self.copy_selection_or_link() {
                 return false;
             }
-            // Help is not being displayed
-            else if key == key_bindings.generic.display_help && !self.in_input() {
-                self.should_display_help = true;
-                self.help_popup.selection = self.state;
+
+            if !self.in_input() {
+                self.toast(format!("Nothing selected, drag with the mouse to select text ({} or {} to quit)", key_bindings.main_menu.exit, key_bindings.main_menu.alt_exit));
                 return false;
             }
+        }
+
+        self.selection = None;
+
+        // Help is being displayed
+        if self.should_display_help {
+            match key {
+                key if key == key_bindings.generic.navigation.go_back
+                    || key == key_bindings.generic.display_help
+                    || key == key_bindings.generic.alt_display_help
+                    || key == key_bindings.main_menu.exit => self.should_display_help = false,
+                key if key == key_bindings.generic.navigation.move_cursor_up => self.help_scroll = self.help_scroll.saturating_sub(1),
+                key if key == key_bindings.generic.navigation.move_cursor_down => self.help_scroll += 1,
+                key if key == key_bindings.request_selected.result_tabs.scroll_page_up => self.help_scroll = self.help_scroll.saturating_sub(10),
+                key if key == key_bindings.request_selected.result_tabs.scroll_page_down => self.help_scroll += 10,
+                _ => {}
+            }
+
+            // Avoid triggering other keys
+            return false;
+        }
+        // Help is not being displayed
+        else if (key == key_bindings.generic.display_help && !self.in_input()) || key == key_bindings.generic.alt_display_help {
+            self.should_display_help = true;
+            self.help_popup.selection = self.state;
+            self.help_scroll = 0;
+            return false;
         }
 
         let mut miss_input = false;
@@ -559,6 +610,7 @@ impl App<'_> {
                 /* Param tabs */
 
                 NextParamTab(_) => self.tui_next_request_param_tab(),
+                PreviousParamTab(_) => self.tui_previous_request_param_tab(),
 
                 ModifyRequestAuthMethod(_) => self.tui_next_request_auth(),
                 ModifyRequestBodyContentType(_) => self.tui_next_request_content_type(),
@@ -649,19 +701,20 @@ impl App<'_> {
                 /* Result tabs */
 
                 NextResultTab(_) => self.tui_next_request_result_tab(),
+                PreviousResultTab(_) => self.tui_previous_request_result_tab(),
 
                 ScrollResultUp(_) => self.result_vertical_scrollbar.page_up(),
                 ScrollResultDown(_) => self.result_vertical_scrollbar.page_down(),
                 ScrollResultLeft(_) => self.result_horizontal_scrollbar.page_up(),
                 ScrollResultRight(_) => self.result_horizontal_scrollbar.page_down(),
+                ScrollResultPageUp(_) => self.result_vertical_scrollbar.scroll_by(-(self.last_result_area.height.max(2) as isize - 1)),
+                ScrollResultPageDown(_) => self.result_vertical_scrollbar.scroll_by(self.last_result_area.height.max(2) as isize - 1),
+                ScrollResultTop(_) => self.result_vertical_scrollbar.top(),
+                ScrollResultBottom(_) => self.result_vertical_scrollbar.bottom(),
 
                 /* Others */
 
-                #[cfg(feature = "clipboard")]
                 CopyResponsePart(_) => self.copy_response_body_content_to_clipboard(),
-
-                #[cfg(not(feature = "clipboard"))]
-                CopyResponsePart(_) => {},
 
                 /* Request Export */
 
@@ -677,11 +730,7 @@ impl App<'_> {
                 ScrollRequestExportLeft(_) => self.display_request_export.horizontal_scrollbar.page_up(),
                 ScrollRequestExportRight(_) => self.display_request_export.horizontal_scrollbar.page_down(),
 
-                #[cfg(feature = "clipboard")]
                 CopyRequestExport(_) => self.copy_request_export_to_clipboard(),
-
-                #[cfg(not(feature = "clipboard"))]
-                CopyRequestExport(_) => {},
 
                 /* Url */
 

@@ -1,114 +1,76 @@
-use arboard::ImageData;
+#[cfg(feature = "clipboard")]
 use image::EncodableLayout;
 use rayon::prelude::*;
 
 use crate::app::app::App;
+#[cfg(feature = "clipboard")]
+use crate::app::clipboard;
 use crate::models::response::ResponseContent;
 use crate::tui::tui_logic::request::messages::get_displayed_messages;
 use crate::tui::ui::result_tabs::RequestResultTabs;
 
 impl App<'_> {
-    #[cfg(feature = "clipboard")]
-    /// Copy the response's body content to the clipboard if it's present, otherwise does nothing
+    /// Copy the current result tab content (body, messages, cookies, headers or console) to the clipboard
     pub fn copy_response_body_content_to_clipboard(&mut self) {
-        if self.clipboard.is_none() {
-            return;
-        }
-
         let local_selected_request = self.get_selected_request_as_local();
         let selected_request = local_selected_request.read();
 
-        match self.request_result_tab {
+        let text = match self.request_result_tab {
             RequestResultTabs::Body => match &selected_request.response.content {
-                None => {}
-                Some(content) => match content {
-                    ResponseContent::Body(body) => {
-                        self.clipboard
-                            .as_mut()
-                            .unwrap()
-                            .set_text(body)
-                            .expect("Could not copy response content to clipboard");
-                    }
-                    ResponseContent::Image(image_response) => match &image_response.image {
-                        None => {}
-                        Some(image) => {
-                            let rgba_image = image.to_rgba8();
+                None => String::new(),
+                Some(ResponseContent::Body(body)) => body.clone(),
+                Some(ResponseContent::Image(image_response)) => {
+                    #[cfg(feature = "clipboard")]
+                    if let Some(image) = &image_response.image {
+                        let rgba_image = image.to_rgba8();
 
-                            self.clipboard
-                                .as_mut()
-                                .unwrap()
-                                .set_image(ImageData {
-                                    width: rgba_image.width() as usize,
-                                    height: rgba_image.height() as usize,
-                                    bytes: rgba_image.as_bytes().into()
-                                })
-                                .expect("Could not copy response image to clipboard");
+                        let copied = clipboard::copy_image(arboard::ImageData {
+                            width: rgba_image.width() as usize,
+                            height: rgba_image.height() as usize,
+                            bytes: rgba_image.as_bytes().to_vec().into()
+                        });
+
+                        drop(selected_request);
+
+                        match copied {
+                            true => self.toast("Image copied"),
+                            false => self.toast("Could not copy image")
                         }
                     }
-                }
-            }
-            RequestResultTabs::Messages => {
-                let text = get_displayed_messages(&selected_request)
-                    .iter()
-                    .map(|m| format!(
-                        "=== {} - New {} message from {} ===\n{}",
-                        m.timestamp.format("%H:%M:%S %d/%m/%Y").to_string(),
-                        m.details,
-                        m.sender,
-                        m.content
-                    ))
-                    .collect::<Vec<String>>()
-                    .join("\n");
 
-                if !text.is_empty() {
-                    self.clipboard
-                        .as_mut()
-                        .unwrap()
-                        .set_text(text)
-                        .expect("Could not copy messages content to clipboard");
+                    #[cfg(not(feature = "clipboard"))]
+                    let _ = image_response;
+
+                    return;
                 }
             },
-            RequestResultTabs::Cookies => match &selected_request.response.cookies {
-                None => {}
-                Some(cookies) => {
-                    self.clipboard
-                        .as_mut()
-                        .unwrap()
-                        .set_text(cookies)
-                        .expect("Could not copy cookies to clipboard")
-                }
+            RequestResultTabs::Messages => get_displayed_messages(&selected_request)
+                .iter()
+                .map(|m| format!(
+                    "=== {} - New {} message from {} ===\n{}",
+                    m.timestamp.format("%H:%M:%S %d/%m/%Y").to_string(),
+                    m.details,
+                    m.sender,
+                    m.content
+                ))
+                .collect::<Vec<String>>()
+                .join("\n"),
+            RequestResultTabs::Cookies => selected_request.response.cookies.clone().unwrap_or_default(),
+            RequestResultTabs::Headers => selected_request.response.headers
+                .par_iter()
+                .map(|(header, value)| format!("{}: {}\n", header, value))
+                .collect(),
+            RequestResultTabs::Console => match (&selected_request.console_output.pre_request_output, &selected_request.console_output.post_request_output) {
+                (None, None) => String::new(),
+                (Some(pre_request_console_output), None) => pre_request_console_output.clone(),
+                (None, Some(post_request_console_output)) => post_request_console_output.clone(),
+                (Some(pre_request_console_output), Some(post_request_console_output)) => format!("{}\n{}", pre_request_console_output, post_request_console_output)
             }
-            RequestResultTabs::Headers => {
-                let headers_string: String = selected_request.response.headers
-                    .par_iter()
-                    .map(|(header, value)| format!("{}: {}\n", header, value))
-                    .collect();
+        };
 
-                if !headers_string.is_empty() {
-                    self.clipboard
-                        .as_mut()
-                        .unwrap()
-                        .set_text(headers_string)
-                        .expect("Could not copy headers to clipboard");
-                }
-            }
-            RequestResultTabs::Console => {
-                let text = match (&selected_request.console_output.pre_request_output, &selected_request.console_output.post_request_output) {
-                    (None, None) => &String::new(),
-                    (Some(pre_request_console_output), None) => pre_request_console_output,
-                    (None, Some(post_request_console_output)) => post_request_console_output,
-                    (Some(pre_request_console_output), Some(post_request_console_output)) => &format!("{}\n{}", pre_request_console_output, post_request_console_output)
-                };
+        drop(selected_request);
 
-                if !text.is_empty() {
-                    self.clipboard
-                        .as_mut()
-                        .unwrap()
-                        .set_text(text)
-                        .expect("Could not copy console output to clipboard")
-                }
-            }
-        }
+        self.copy_to_clipboard(&text, "Copied");
     }
 
     pub fn get_max_line_length(&self, text: &str) -> usize {

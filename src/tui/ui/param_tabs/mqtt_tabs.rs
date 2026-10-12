@@ -8,7 +8,8 @@ use crate::app::app::App;
 use crate::app::files::theme::THEME;
 use crate::models::request::Request;
 use crate::tui::app_states::AppState::{EditingMqttFormField, EditingRequestMessage, SelectedRequest};
-use crate::tui::tui_logic::request::mqtt::MqttFormField;
+use crate::tui::tui_logic::request::mqtt::{get_mqtt_form_fields, MqttFormField};
+use crate::tui::mouse::MouseTarget;
 use crate::tui::utils::stateful::text_input::{MultiLineTextInput, SingleLineTextInput};
 use crate::tui::utils::syntax_highlighting::ENV_VARIABLE_SYNTAX_REF;
 
@@ -81,10 +82,18 @@ impl App<'_> {
 
         self.message_text_area.display_cursor = matches!(self.state, EditingRequestMessage);
         frame.render_widget(MultiLineTextInput(&mut self.message_text_area, ENV_VARIABLE_SYNTAX_REF.clone()), payload_area);
+
+        if let Some(index) = get_mqtt_form_fields(self.request_param_tab).iter().position(|f| *f == MqttFormField::PublishPayload) {
+            self.hit(layout[2], MouseTarget::MqttField(index));
+        }
     }
 
     fn render_mqtt_form_field(&mut self, frame: &mut Frame, area: Rect, request: &Request, field: MqttFormField) {
         let is_selected = self.get_selected_mqtt_form_field() == Some(field);
+
+        if let Some(index) = get_mqtt_form_fields(self.request_param_tab).iter().position(|f| *f == field) {
+            self.hit(area, MouseTarget::MqttField(index));
+        }
 
         // The selected text field is being edited
         if is_selected && self.state == EditingMqttFormField {

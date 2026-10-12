@@ -6,6 +6,7 @@ use ratatui::style::Stylize;
 use ratatui::widgets::{Block, Borders, Clear, List, ListItem, Paragraph};
 
 use crate::app::app::App;
+use crate::tui::mouse::MouseTarget;
 use crate::app::files::theme::THEME;
 use crate::tui::utils::centered_rect::centered_rect;
 use crate::tui::utils::stateful::cookie_table::{CookieColumns, COOKIES_COLUMNS_NUMBER};
@@ -21,6 +22,7 @@ impl App<'_> {
         let area = centered_rect(120, 25, frame.area());
 
         frame.render_widget(Clear, area);
+        self.hit(area, MouseTarget::Popup);
         frame.render_widget(popup_block, area);
 
         let horizontal_margin = 1;

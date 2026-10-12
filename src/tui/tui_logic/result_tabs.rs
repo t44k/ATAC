@@ -1,4 +1,5 @@
 use std::str::Lines;
+use strum::IntoEnumIterator;
 use ratatui::prelude::{Line, Stylize};
 use crate::app::app::App;
 use crate::app::files::theme::THEME;
@@ -44,6 +45,24 @@ impl App<'_> {
         *self.received_response.lock() = true;
     }
 
+    pub fn tui_previous_request_result_tab(&mut self) {
+        let start = self.request_result_tab;
+        let mut previous = start;
+
+        // Go around the tabs once, the previous tab is the one before the start
+        for _ in 0..RequestResultTabs::iter().count() {
+            self.tui_next_request_result_tab();
+
+            if self.request_result_tab == start {
+                break;
+            }
+
+            previous = self.request_result_tab;
+        }
+
+        self.request_result_tab = previous;
+    }
+
     pub fn tui_update_request_result_tab(&mut self) {
         let local_selected_request = self.get_selected_request_as_local();
         let selected_request = local_selected_request.read();
@@ -68,6 +87,9 @@ impl App<'_> {
     pub fn tui_highlight_response_body_and_console(&mut self) {
         let local_selected_request = self.get_selected_request_as_local();
         let selected_request = local_selected_request.write();
+
+        // The result view will be rebuilt on next render
+        self.result_generation += 1;
 
         self.syntax_highlighting.highlighted_body = None;
         self.syntax_highlighting.highlighted_console_output = vec![];
@@ -97,97 +119,6 @@ impl App<'_> {
 
             self.syntax_highlighting.highlighted_console_output.extend(highlighted_console_output);
         }
-    }
-
-    pub fn tui_refresh_result_scrollbars(&mut self) {
-        // Vertical max
-        let vertical_max: u16;
-        let horizontal_max: u16;
-
-        let local_selected_request = self.get_selected_request_as_local();
-        let selected_request = local_selected_request.read();
-
-        match self.request_result_tab {
-            RequestResultTabs::Body => {
-                match &selected_request.response.content {
-                    None => {
-                        vertical_max = 0;
-                        horizontal_max = 0;
-                    },
-                    Some(content) => match content {
-                        ResponseContent::Body(body) => {
-                            vertical_max = body.lines().count() as u16;
-                            horizontal_max = App::get_max_str_len(body.lines()) as u16;
-                        }
-                        ResponseContent::Image(_) => {
-                            vertical_max = 0;
-                            horizontal_max = 0;
-                        }
-                    }
-                }
-            },
-            RequestResultTabs::Messages => {
-                let line_count = self.get_messages_lines_count()  as u16;
-                let max_scroll = line_count.saturating_sub(self.last_messages_area_size.1);
-
-                if self.last_messages_area_size.1 > 0 {
-                    vertical_max = max_scroll;
-                }
-                else {
-                    vertical_max = 0;
-                }
-
-                horizontal_max = 0;
-            },
-            RequestResultTabs::Cookies => {
-                match &selected_request.response.cookies {
-                    None => {
-                        vertical_max = 0;
-                        horizontal_max = 0;
-                    },
-                    Some(cookies) => {
-                        vertical_max = cookies.lines().count() as u16;
-                        horizontal_max = App::get_max_str_len(cookies.lines()) as u16;
-                    }
-                }
-            },
-            RequestResultTabs::Headers => {
-                vertical_max = selected_request.response.headers.len()  as u16;
-
-                let mut max_tmp: u16 = 0;
-
-                for (header, value) in &selected_request.response.headers {
-                    let str_len = (header.len() + value.len()) as u16;
-                    if str_len > max_tmp {
-                        max_tmp = str_len;
-                    }
-                }
-
-                horizontal_max = max_tmp;
-            },
-            RequestResultTabs::Console => {
-                let console_output = match (&selected_request.console_output.pre_request_output, &selected_request.console_output.post_request_output) {
-                    (None, None) => None,
-                    (Some(pre_request_output), None) => Some(pre_request_output),
-                    (None, Some(post_request_output)) => Some(post_request_output),
-                    (Some(pre_request_output), Some(post_request_output)) => Some(&format!("{}\n{}", pre_request_output, post_request_output)),
-                };
-
-                match console_output {
-                    None => {
-                        vertical_max = 0;
-                        horizontal_max = 0;
-                    },
-                    Some(console_output) => {
-                        vertical_max = console_output.lines().count() as u16;
-                        horizontal_max = App::get_max_str_len(console_output.lines()) as u16;
-                    }
-                }
-            }
-        }
-
-        self.result_vertical_scrollbar.set_max_scroll(vertical_max);
-        self.result_horizontal_scrollbar.set_max_scroll(horizontal_max);
     }
 
     pub fn get_max_str_len(lines: Lines) -> usize {

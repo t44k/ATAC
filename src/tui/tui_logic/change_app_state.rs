@@ -105,8 +105,8 @@ impl App<'_> {
             }
         }
 
-        self.logs_vertical_scrollbar.max_scroll = logs.len().saturating_sub(1) as u16;
-        self.logs_horizontal_scrollbar.max_scroll = max_log_width as u16;
+        self.logs_vertical_scrollbar.set_max_scroll(logs.len().saturating_sub(1));
+        self.logs_horizontal_scrollbar.set_max_scroll(max_log_width);
 
         self.set_app_state(AppState::DisplayingLogs);
     }

@@ -3,6 +3,7 @@ use ratatui::widgets::{Block, Borders, Clear};
 use ratatui::Frame;
 
 use crate::app::app::App;
+use crate::tui::mouse::MouseTarget;
 use crate::app::files::theme::THEME;
 use crate::tui::utils::centered_rect::centered_rect;
 use crate::tui::utils::stateful::text_input::SingleLineTextInput;
@@ -20,6 +21,7 @@ impl App<'_> {
         let renaming_request_area = popup_block.inner(area);
 
         frame.render_widget(Clear, area);
+        self.hit(area, MouseTarget::Popup);
         frame.render_widget(popup_block, area);
 
         self.rename_request_input.display_cursor = true;

@@ -7,7 +7,10 @@ use edtui::actions::motion::MoveToFirstRow;
 use edtui::actions::search::StartSearch;
 use edtui::actions::{Composed, CopySelection, DeleteChar, FindNext, FindPrevious, InsertChar, LineBreak, MoveBackward, MoveDown, MoveForward, MoveToEndOfLine, MoveToStartOfLine, MoveUp, MoveWordBackward, MoveWordForward, OpenSystemEditor, Paste, Redo, RemoveChar, RemoveCharFromSearch, SelectCurrentSearch, StopSearch, SwitchMode, Undo};
 use edtui::events::{KeyEventHandler, KeyEventRegister, KeyInput};
-use edtui::{system_editor, EditorEventHandler, EditorMode, EditorState, EditorStatusLine, EditorTheme, EditorView, LineNumbers, SyntaxHighlighter};
+use edtui::{system_editor, EditorEventHandler, EditorMode, EditorState, EditorStatusLine, EditorTheme, EditorView, Index2, LineNumbers, SyntaxHighlighter};
+use edtui::actions::DeleteSelection;
+use ratatui::crossterm::event::{KeyModifiers, MouseEvent};
+use crate::app::clipboard;
 use ratatui::backend::CrosstermBackend;
 use ratatui::buffer::Buffer;
 use ratatui::crossterm::event::{KeyCode, KeyEvent};
@@ -29,7 +32,11 @@ pub struct TextInput {
     pub insert_mode_only: bool,
     pub highlight_text: bool,
     pub highlight_block: bool,
-    pub display_cursor: bool
+    pub display_cursor: bool,
+    /// Area drawn on the last frame, used for mouse events
+    pub last_area: Rect,
+    /// Fixed end of a selection made with shift + arrows
+    selection_anchor: Option<Index2>,
 }
 
 pub struct SingleLineTextInput<'a>(pub &'a mut TextInput);
@@ -37,6 +44,8 @@ pub struct MultiLineTextInput<'a>(pub &'a mut TextInput, pub SyntaxReference);
 
 impl<'a> Widget for SingleLineTextInput<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) where Self: Sized {
+        self.0.last_area = area;
+
         let new_area = match &self.0.block_title {
             None => area,
             Some(block_title) => {
@@ -118,6 +127,8 @@ impl<'a> Widget for SingleLineTextInput<'a> {
 
 impl<'a> Widget for MultiLineTextInput<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) where Self: Sized {
+        self.0.last_area = area;
+
         let mut theme = EditorTheme::default()
             .base(Style::new().fg(THEME.read().ui.font_color))
             .line_numbers_style(Style::new().fg(THEME.read().ui.secondary_foreground_color));
@@ -185,7 +196,8 @@ impl<'a> Widget for MultiLineTextInput<'a> {
 
 impl TextInput {
     pub fn new(block_title: Option<String>) -> Self {
-        let state = EditorState::default();
+        let mut state = EditorState::default();
+        state.set_clipboard(clipboard::EditorClipboard);
 
         Self {
             state,
@@ -197,6 +209,8 @@ impl TextInput {
             highlight_text: false, // Placeholder
             highlight_block: false, // Placeholder
             display_cursor: false, // Placeholder
+            last_area: Rect::default(),
+            selection_anchor: None,
         }
     }
 
@@ -285,6 +299,16 @@ impl TextInput {
     pub fn key_event(&mut self, key: KeyCombination, terminal: Option<&mut Terminal<CrosstermBackend<Stdout>>>) {
         let key_event: KeyEvent = key.into();
 
+        let custom_text_area = match KEY_BINDINGS.read().generic.text_input.mode {
+            TextAreaMode::Default => Some(CustomTextArea::default()),
+            TextAreaMode::Custom(custom_text_area) => Some(custom_text_area),
+            TextAreaMode::Vim | TextAreaMode::Emacs => None
+        };
+
+        if let Some(custom_text_area) = custom_text_area && self.handle_selection_key(key, key_event, &custom_text_area) {
+            return;
+        }
+
         match key_event.code {
             KeyCode::Char(_) | KeyCode::Enter |
             KeyCode::Esc | KeyCode::Backspace | KeyCode::Delete |
@@ -297,6 +321,185 @@ impl TextInput {
 
         if let Some(terminal) = terminal && system_editor::is_pending(&self.state) {
             system_editor::open(&mut self.state, terminal).ok();
+        }
+    }
+}
+
+impl TextInput {
+    /// Forward a mouse event to the editor (cursor placement, drag selection, wheel scroll)
+    pub fn mouse_event(&mut self, event: MouseEvent) {
+        if let Some(event_handler) = &self.event_handler {
+            event_handler.on_mouse_event(event, &mut self.state);
+        }
+
+        // A click leaves the visual mode to the normal mode, inputs without normal mode go back to insert
+        if self.default_mode == EditorMode::Insert && self.state.mode == EditorMode::Normal {
+            self.state.mode = EditorMode::Insert;
+        }
+
+        self.selection_anchor = None;
+    }
+
+    /// Paste text, e.g. from the terminal bracketed paste
+    pub fn paste(&mut self, text: String) {
+        let text = match self.is_single_line {
+            true => text.replace(['\r', '\n'], ""),
+            false => text.replace("\r\n", "\n")
+        };
+
+        if self.state.selection.is_some() {
+            clipboard::muted(|| self.state.execute(DeleteSelection));
+            self.state.mode = self.default_mode;
+        }
+
+        // Inserted directly, the editor paste would go through the clipboard
+        for char in text.chars() {
+            match char {
+                '\n' => self.state.execute(LineBreak(1)),
+                char => self.state.execute(InsertChar(char))
+            }
+        }
+    }
+
+    pub fn selected_text(&self) -> Option<String> {
+        let selection = self.state.selection.as_ref()?;
+        let text: String = selection.copy_from(&self.state.lines).into();
+
+        match text.is_empty() {
+            true => None,
+            false => Some(text)
+        }
+    }
+
+    pub fn clear_selection(&mut self) {
+        self.state.selection = None;
+        self.selection_anchor = None;
+
+        if self.state.mode == EditorMode::Visual {
+            self.state.mode = self.default_mode;
+        }
+    }
+
+    /// Selection keys of the default and custom modes: shift + arrows, select all, cut, and typing over a selection.
+    /// Returns true when the key was fully handled.
+    fn handle_selection_key(&mut self, key: KeyCombination, key_event: KeyEvent, custom_text_area: &CustomTextArea) -> bool {
+        // Shift + motion extends the selection
+        if key_event.modifiers == KeyModifiers::SHIFT {
+            let motion = match key_event.code {
+                KeyCode::Left => Some(0),
+                KeyCode::Right => Some(1),
+                KeyCode::Up if !self.is_single_line => Some(2),
+                KeyCode::Down if !self.is_single_line => Some(3),
+                KeyCode::Home => Some(4),
+                KeyCode::End => Some(5),
+                _ => None
+            };
+
+            if let Some(motion) = motion {
+                let anchor = match (self.state.mode, self.selection_anchor) {
+                    (EditorMode::Visual, Some(anchor)) => anchor,
+                    _ => self.state.cursor
+                };
+
+                // Move like in insert mode, the cursor can go after the last char
+                self.state.mode = EditorMode::Insert;
+
+                match motion {
+                    0 => self.state.execute(MoveBackward(1)),
+                    1 => self.state.execute(MoveForward(1)),
+                    2 => self.state.execute(MoveUp(1)),
+                    3 => self.state.execute(MoveDown(1)),
+                    4 => self.state.execute(MoveToStartOfLine()),
+                    _ => self.state.execute(MoveToEndOfLine()),
+                }
+
+                self.select_between(anchor, self.state.cursor);
+                return true;
+            }
+        }
+
+        if key == custom_text_area.select_all {
+            let last_row = self.state.lines.len().saturating_sub(1);
+            let last_row_length = self.state.lines.len_col(last_row).unwrap_or(0);
+
+            self.state.mode = EditorMode::Insert;
+            self.state.cursor = Index2::new(last_row, last_row_length);
+            self.select_between(Index2::new(0, 0), self.state.cursor);
+            return true;
+        }
+
+        if self.state.mode != EditorMode::Visual || self.state.selection.is_none() {
+            return false;
+        }
+
+        match key_event.code {
+            _ if key == custom_text_area.cut => {
+                // Goes to the system clipboard
+                self.state.execute(DeleteSelection);
+                self.state.mode = EditorMode::Insert;
+                self.selection_anchor = None;
+                true
+            },
+            _ if key == custom_text_area.copy => {
+                if let Some(text) = self.selected_text() {
+                    clipboard::copy_text(&text);
+                }
+                self.clear_selection();
+                true
+            },
+            KeyCode::Backspace | KeyCode::Delete => {
+                clipboard::muted(|| self.state.execute(DeleteSelection));
+                self.state.mode = EditorMode::Insert;
+                self.selection_anchor = None;
+                true
+            },
+            // Typing replaces the selection
+            KeyCode::Char(_) if !key_event.modifiers.intersects(KeyModifiers::CONTROL | KeyModifiers::ALT) || key == custom_text_area.paste => {
+                clipboard::muted(|| self.state.execute(DeleteSelection));
+                self.state.mode = EditorMode::Insert;
+                self.selection_anchor = None;
+                false
+            },
+            KeyCode::Esc => {
+                self.clear_selection();
+                true
+            },
+            _ => {
+                self.clear_selection();
+                false
+            }
+        }
+    }
+
+    /// Select from `anchor` to `cursor`, the char under the cursor is not included
+    fn select_between(&mut self, anchor: Index2, cursor: Index2) {
+        self.selection_anchor = Some(anchor);
+
+        if anchor == cursor {
+            self.state.selection = None;
+            self.state.mode = EditorMode::Insert;
+            return;
+        }
+
+        let (start, end) = match anchor < cursor {
+            true => (anchor, cursor),
+            false => (cursor, anchor)
+        };
+
+        // The selection end is inclusive
+        let end = match end.col {
+            0 if end.row > start.row => Index2::new(end.row - 1, self.state.lines.len_col(end.row - 1).unwrap_or(1).saturating_sub(1)),
+            col => Index2::new(end.row, col.saturating_sub(1))
+        };
+
+        // edtui does not export its selection type, create one by entering the visual mode
+        self.state.mode = EditorMode::Insert;
+        self.state.execute(SwitchMode(EditorMode::Visual));
+        self.state.cursor = cursor;
+
+        if let Some(selection) = self.state.selection.as_mut() {
+            selection.start = start;
+            selection.end = end;
         }
     }
 }

@@ -5,6 +5,7 @@ use ratatui::widgets::{Block, Borders, Clear, Paragraph};
 use ratatui::Frame;
 
 use crate::app::app::App;
+use crate::tui::mouse::MouseTarget;
 use crate::app::files::theme::THEME;
 use crate::tui::utils::centered_rect::centered_rect;
 use crate::tui::utils::stateful::text_input::SingleLineTextInput;
@@ -61,6 +62,7 @@ impl App<'_> {
         let highlight_and_display_cursor = self.new_request_popup.selection == 2;
 
         frame.render_widget(Clear, area);
+        self.hit(area, MouseTarget::Popup);
         frame.render_widget(popup_block, area);
         frame.render_widget(selected_collection_paragraph, new_request_layout[0]);
         frame.render_widget(selected_protocol_paragraph, new_request_layout[1]);

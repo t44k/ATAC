@@ -1,13 +1,16 @@
 use ratatui::layout::Direction::Vertical;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::Stylize;
-use ratatui::text::Line;
+use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph, Tabs};
 use ratatui::Frame;
 use strum::{Display, EnumIter, FromRepr};
 
 use crate::app::app::App;
 use crate::app::files::theme::THEME;
+use crate::app::files::key_bindings::KEY_BINDINGS;
+use crate::tui::mouse::{MouseTarget, TableId};
+use crate::tui::mouse::tabs::tab_rects;
 use crate::models::auth::auth::Auth::{BasicAuth, BearerToken, Digest, JwtToken, NoAuth};
 use crate::models::protocol::http::body::ContentType::*;
 use crate::models::protocol::protocol::Protocol;
@@ -17,7 +20,7 @@ use crate::tui::tui_logic::utils::key_value_vec_to_items_list;
 use crate::tui::utils::stateful::text_input::MultiLineTextInput;
 use crate::tui::utils::syntax_highlighting::{ENV_VARIABLE_SYNTAX_REF, HTML_SYNTAX_REF, JSON_SYNTAX_REF, JS_SYNTAX_REF, XML_SYNTAX_REF};
 
-#[derive(Default, Clone, Copy, PartialEq, Display, FromRepr, EnumIter)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Display, FromRepr, EnumIter)]
 pub enum RequestParamsTabs {
     #[default]
     #[strum(to_string = "Params")]
@@ -77,7 +80,7 @@ impl App<'_> {
             ]
         };
 
-        let param_tabs = allowed_tabs
+        let param_tab_titles: Vec<String> = allowed_tabs
             .iter()
             .map(|tab| {
                 let text = match tab {
@@ -118,8 +121,15 @@ impl App<'_> {
                     RequestParamsTabs::Scripts => tab.to_string(),
                 };
 
-                text.fg(THEME.read().ui.font_color)
-            });
+                text
+            })
+            .collect();
+
+        for (rect, tab) in tab_rects(request_params_layout[0], &param_tab_titles).into_iter().zip(&allowed_tabs) {
+            self.hit(rect, MouseTarget::ParamTab(*tab));
+        }
+
+        let param_tabs = param_tab_titles.iter().map(|title| Span::raw(title.as_str()).fg(THEME.read().ui.font_color));
 
         let selected_param_tab_index = match &request.protocol {
             Protocol::HttpRequest(_) => match self.request_param_tab {
@@ -167,6 +177,7 @@ impl App<'_> {
                 let mut rows = key_value_vec_to_items_list(&self.get_selected_env_as_local(), &self.query_params_table.rows);
 
                 frame.render_stateful_widget(&mut self.query_params_table, request_params_layout[1], &mut rows);
+                self.hit(request_params_layout[1], MouseTarget::Table(TableId::QueryParams));
             }
             RequestParamsTabs::Auth => {
                 match &request.auth {
@@ -174,12 +185,13 @@ impl App<'_> {
                         let auth_lines = vec![
                             Line::default(),
                             Line::from("No auth").fg(THEME.read().ui.font_color),
-                            Line::from("(Change auth method with ^a)").fg(THEME.read().ui.secondary_foreground_color)
+                            Line::from(format!("(Change auth method with {} or click here)", KEY_BINDINGS.read().request_selected.param_tabs.change_auth_method)).fg(THEME.read().ui.secondary_foreground_color)
                         ];
 
                         let auth_paragraph = Paragraph::new(auth_lines).centered();
 
                         frame.render_widget(auth_paragraph, request_params_layout[1]);
+                        self.hit(request_params_layout[1], MouseTarget::ChangeType);
                     }
                     BasicAuth(_) => self.render_basic_auth_tab(frame, request_params_layout[1]),
                     BearerToken(_) => self.render_bearer_token_tab(frame, request_params_layout[1]),
@@ -193,6 +205,7 @@ impl App<'_> {
                 let mut rows = key_value_vec_to_items_list(&self.get_selected_env_as_local(), &self.headers_table.rows);
 
                 frame.render_stateful_widget(&mut self.headers_table, request_params_layout[1], &mut rows);
+                self.hit(request_params_layout[1], MouseTarget::Table(TableId::Headers));
             }
             RequestParamsTabs::Body => {
                 let http_request = request.get_http_request().unwrap();
@@ -202,12 +215,13 @@ impl App<'_> {
                         let body_lines = vec![
                             Line::default(),
                             Line::from("No body").fg(THEME.read().ui.font_color),
-                            Line::from("(Change body type with ^b)").fg(THEME.read().ui.secondary_foreground_color)
+                            Line::from(format!("(Change body type with {} or click here)", KEY_BINDINGS.read().request_selected.param_tabs.change_body_content_type)).fg(THEME.read().ui.secondary_foreground_color)
                         ];
 
                         let body_paragraph = Paragraph::new(body_lines).centered();
 
                         frame.render_widget(body_paragraph, request_params_layout[1]);
+                        self.hit(request_params_layout[1], MouseTarget::ChangeType);
                     }
                     Multipart(_) | Form(_) => {
                         self.body_form_table.is_editing = matches!(self.state, EditingRequestBodyTable);
@@ -215,6 +229,8 @@ impl App<'_> {
                         let mut rows = key_value_vec_to_items_list(&self.get_selected_env_as_local(), &self.body_form_table.rows);
 
                         frame.render_stateful_widget(&mut self.body_form_table, request_params_layout[1], &mut rows);
+                        self.hit(request_params_layout[1], MouseTarget::Table(TableId::BodyForm));
+                self.hit(request_params_layout[1], MouseTarget::Table(TableId::BodyForm));
                     },
                     File(_) => {
                       self.render_file_body_tab(frame, request_params_layout[1]);
@@ -233,6 +249,7 @@ impl App<'_> {
                         self.body_text_area.display_cursor = display_cursor;
 
                         frame.render_widget(MultiLineTextInput(&mut self.body_text_area, syntax_reference), request_params_layout[1]);
+                        self.hit(request_params_layout[1], MouseTarget::BodyText);
                     }
                 }
             },
@@ -241,7 +258,8 @@ impl App<'_> {
 
                 self.message_text_area.display_cursor = display_cursor;
 
-                frame.render_widget(MultiLineTextInput(&mut self.message_text_area, ENV_VARIABLE_SYNTAX_REF.clone()), request_params_layout[1]);            }
+                frame.render_widget(MultiLineTextInput(&mut self.message_text_area, ENV_VARIABLE_SYNTAX_REF.clone()), request_params_layout[1]);
+                self.hit(request_params_layout[1], MouseTarget::Message);            }
             RequestParamsTabs::MqttConnection => {
                 self.render_mqtt_connection_tab(frame, request_params_layout[1], request);
             }
@@ -251,6 +269,7 @@ impl App<'_> {
                 let mut rows = key_value_vec_to_items_list(&self.get_selected_env_as_local(), &self.mqtt_subscriptions_table.rows);
 
                 frame.render_stateful_widget(&mut self.mqtt_subscriptions_table, request_params_layout[1], &mut rows);
+                self.hit(request_params_layout[1], MouseTarget::Table(TableId::MqttSubscriptions));
             }
             RequestParamsTabs::MqttPublish => {
                 self.render_mqtt_publish_tab(frame, request_params_layout[1], request);

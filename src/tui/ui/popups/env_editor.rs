@@ -1,4 +1,5 @@
 use crate::app::app::App;
+use crate::tui::mouse::{MouseTarget, TableId};
 use crate::app::files::theme::THEME;
 use crate::tui::app_states::AppState::EditingEnvVariable;
 use crate::tui::utils::centered_rect::centered_rect;
@@ -22,6 +23,7 @@ impl App<'_> {
         let area = centered_rect(120, 25, frame.area());
 
         frame.render_widget(Clear, area);
+        self.hit(area, MouseTarget::Popup);
         frame.render_widget(popup_block, area);
 
         let env_variables_editor_layout = area.inner(Margin::new(1, 1));
@@ -31,5 +33,6 @@ impl App<'_> {
         let mut rows = key_value_vec_to_items_list(&self.get_selected_env_as_local(), &self.env_editor_table.rows);
 
         frame.render_stateful_widget(&mut self.env_editor_table, env_variables_editor_layout, &mut rows);
+        self.hit(env_variables_editor_layout, MouseTarget::Table(TableId::EnvEditor));
     }
 }

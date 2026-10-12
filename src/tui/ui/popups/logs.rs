@@ -1,4 +1,5 @@
 use crate::app::app::App;
+use crate::tui::mouse::MouseTarget;
 use crate::app::files::theme::THEME;
 use crate::app::log::LOGS;
 use crate::tui::utils::centered_rect::centered_rect;
@@ -21,6 +22,7 @@ impl App<'_> {
         let area = centered_rect(120, 25, frame.area());
 
         frame.render_widget(Clear, area);
+        self.hit(area, MouseTarget::Popup);
         frame.render_widget(popup_block, area);
 
         let logger_layout = Layout::new(
@@ -62,11 +64,12 @@ impl App<'_> {
 
         let logs_paragraph = Paragraph::new(lines)
             .scroll((
-                self.logs_vertical_scrollbar.scroll,
-                self.logs_horizontal_scrollbar.scroll,
+                self.logs_vertical_scrollbar.offset(),
+                self.logs_horizontal_scrollbar.offset(),
             ));
 
         frame.render_widget(logs_paragraph, logger_layout[0]);
+        self.hit(logger_layout[0], MouseTarget::LogsContent);
 
         // For mysterious reasons, they won't show up...
         let logger_vertical_scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)

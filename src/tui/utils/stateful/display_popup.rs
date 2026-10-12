@@ -18,7 +18,8 @@ pub struct DisplayPopup {
 }
 
 impl DisplayPopup {
-    pub fn render(&mut self, frame: &mut Frame) {
+    /// Returns the popup area
+    pub fn render(&mut self, frame: &mut Frame) -> ratatui::layout::Rect {
         let popup_block = Block::default()
             .title(format!("{} export", self.title))
             .borders(Borders::ALL)
@@ -42,8 +43,8 @@ impl DisplayPopup {
 
         let content = Paragraph::new(self.lines.clone())
             .scroll((
-                self.vertical_scrollbar.scroll,
-                self.horizontal_scrollbar.scroll
+                self.vertical_scrollbar.offset(),
+                self.horizontal_scrollbar.offset()
             ))
             .fg(THEME.read().ui.font_color);
 
@@ -66,5 +67,7 @@ impl DisplayPopup {
             area,
             &mut self.horizontal_scrollbar.state
         );
+
+        area
     }
 }

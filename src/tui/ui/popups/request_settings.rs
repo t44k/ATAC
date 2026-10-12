@@ -5,6 +5,7 @@ use ratatui::style::Stylize;
 use ratatui::widgets::{Block, Borders, Clear, Paragraph};
 
 use crate::app::app::App;
+use crate::tui::mouse::MouseTarget;
 use crate::app::files::theme::THEME;
 use crate::tui::utils::centered_rect::centered_rect;
 
@@ -21,6 +22,7 @@ impl App<'_> {
         let area = centered_rect(50, 2 + 1 + 2 * settings_number, frame.area());
 
         frame.render_widget(Clear, area);
+        self.hit(area, MouseTarget::Popup);
         frame.render_widget(popup_block, area);
 
         let request_settings_layout = Layout::new(
@@ -54,6 +56,10 @@ impl App<'_> {
             .split(request_settings_layout[1]);
 
         // Render settings
+        for index in 0..self.request_settings_popup.settings.len() {
+            self.hit(settings_names_layout[index + 1].union(settings_values_layout[index + 1]), MouseTarget::SettingsRow(index));
+        }
+
         for (index, (setting_name, setting_value)) in self.request_settings_popup.settings.iter().enumerate() {
             let setting_name_paragraph = Paragraph::new(setting_name.to_string()).fg(THEME.read().ui.font_color).centered();
             let mut setting_value_paragraph = Paragraph::new(setting_value.to_string()).fg(THEME.read().ui.font_color).centered();

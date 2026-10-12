@@ -37,6 +37,13 @@ impl App<'_> {
         self.tui_load_a_request_param_tab();
     }
 
+    pub fn tui_previous_request_param_tab(&mut self) {
+        // Every protocol has 5 param tabs
+        for _ in 0..4 {
+            self.tui_next_request_param_tab();
+        }
+    }
+
     pub fn tui_update_request_param_tab(&mut self) {
         let local_selected_request = self.get_selected_request_as_local();
         let selected_request = local_selected_request.read();

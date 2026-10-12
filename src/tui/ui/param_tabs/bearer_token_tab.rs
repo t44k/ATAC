@@ -3,6 +3,7 @@ use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::Frame;
 
 use crate::app::app::App;
+use crate::tui::mouse::MouseTarget;
 use crate::tui::app_states::AppState::EditingRequestAuthBearerToken;
 use crate::tui::utils::stateful::text_input::SingleLineTextInput;
 
@@ -25,5 +26,6 @@ impl App<'_> {
         self.auth_bearer_token_text_input.display_cursor = should_display_cursor;
         
         frame.render_widget(SingleLineTextInput(&mut self.auth_bearer_token_text_input), bearer_token_auth_layout[0]);
+        self.hit(bearer_token_auth_layout[0], MouseTarget::AuthField(0));
     }
 }

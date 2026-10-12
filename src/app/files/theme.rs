@@ -1,16 +1,13 @@
-use std::env;
-use std::fs::OpenOptions;
-use std::io::Read;
-use std::path::PathBuf;
+use std::fs;
 use lazy_static::lazy_static;
 use nestify::nest;
 use parking_lot::RwLock;
 use ratatui::style::Color;
-use tracing::{trace, warn};
+use tracing::{info, trace};
 use serde::{Deserialize, Serialize};
 
 use crate::app::app::App;
-use crate::app::files::utils::expand_tilde;
+use crate::app::files::utils::{find_config_file, parse_partial_toml};
 use crate::panic_error;
 
 nest! {
@@ -65,6 +62,8 @@ nest! {
             pub struct ThemeOthers {
                 pub selection_highlight_color: Color,
                 pub environment_variable_highlight_color: Color,
+                /// Links hovered with the mouse in the result panel
+                pub link_color: Color,
             },
 
         #[serde(alias = "HTTP")]
@@ -121,6 +120,7 @@ impl Default for Theme {
             others: ThemeOthers {
                 selection_highlight_color: Color::Yellow,
                 environment_variable_highlight_color: Color::Cyan,
+                link_color: Color::LightBlue,
             },
             http: ThemeHttp {
                 methods: ThemeMethods {
@@ -171,33 +171,55 @@ lazy_static! {
 }
 
 impl App<'_> {
+    /// Load the theme from `ATAC_THEME`, or `theme.toml` in the app or config directory.
+    /// The file can only contain the colors to change.
     pub fn parse_theme_file(&mut self) {
-        let path = match env::var("ATAC_THEME") {
-            // If the ATAC_THEME environment variable exists
-            Ok(env_theme) => expand_tilde(PathBuf::from(env_theme)),
-            Err(_) => {
-                warn!("No theme file found, using default");
+        let path = match find_config_file("ATAC_THEME", &["theme.toml"]) {
+            Some(path) => path,
+            None => {
+                trace!("No theme file found, using default");
                 return;
             }
         };
 
         trace!("Parsing theme file \"{}\"", path.display());
 
-        let mut theme_file = match OpenOptions::new().read(true).open(path) {
-            Ok(theme_file) => theme_file,
-            Err(e) => panic_error(format!("Could not open theme file\n\t{e}"))
+        let file_content = match fs::read_to_string(&path) {
+            Ok(file_content) => file_content,
+            Err(e) => panic_error(format!("Could not open theme file \"{}\"\n\t{e}", path.display()))
         };
 
-        let mut file_content = String::new();
-        theme_file.read_to_string(&mut file_content).expect("\tCould not read key bindings file");
-
-        let theme: Theme = match toml::from_str(&file_content) {
+        let theme: Theme = match parse_partial_toml(&Theme::default(), &file_content) {
             Ok(theme) => theme,
-            Err(e) => panic_error(format!("Could not parse theme file\n\t{e}"))
+            Err(e) => panic_error(format!("Could not parse theme file \"{}\"\n\t{e}", path.display()))
         };
 
         *THEME.write() = theme;
 
-        trace!("Theme file parsed!");
+        info!("Theme loaded from \"{}\"", path.display());
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn partial_theme_keeps_default_colors() {
+        let theme = parse_partial_toml(&Theme::default(), "[others]\nlink_color = \"Magenta\"").unwrap();
+
+        assert_eq!(theme.others.link_color, Color::Magenta);
+        assert_eq!(theme.others.selection_highlight_color, Color::Yellow);
+        assert_eq!(theme.http.methods.get, Color::Green);
+    }
+
+    #[test]
+    fn example_themes_still_parse() {
+        for entry in fs::read_dir("example_resources/themes").unwrap() {
+            let path = entry.unwrap().path();
+            let content = fs::read_to_string(&path).unwrap();
+
+            parse_partial_toml(&Theme::default(), &content).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+        }
     }
 }

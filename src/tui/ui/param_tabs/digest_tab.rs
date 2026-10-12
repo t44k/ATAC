@@ -1,4 +1,5 @@
 use crate::app::app::App;
+use crate::tui::mouse::MouseTarget;
 use crate::app::files::theme::THEME;
 use crate::tui::app_states::AppState::{SelectedRequest, EditingRequestAuthDigestUsername, EditingRequestAuthDigestPassword, EditingRequestAuthDigestDomains, EditingRequestAuthDigestRealm, EditingRequestAuthDigestNonce, EditingRequestAuthDigestOpaque};
 use ratatui::layout::Direction::Vertical;
@@ -206,6 +207,33 @@ impl App<'_> {
 
         scrollbar_state.set_offset(Position::new(0, scroll_offset));
 
-        digest_auth_scroll_view.render(area, frame.buffer_mut(), &mut scrollbar_state)
+        digest_auth_scroll_view.render(area, frame.buffer_mut(), &mut scrollbar_state);
+
+        // The fields are drawn in the scroll view, move their areas to the screen
+        let to_screen = |field_area: Rect| {
+            let y = (area.y + field_area.y).saturating_sub(scroll_offset);
+            let field_area = Rect::new(area.x + field_area.x, y, field_area.width, field_area.height);
+            match field_area.y + field_area.height <= area.y + area.height && field_area.y >= area.y {
+                true => field_area,
+                false => field_area.intersection(area)
+            }
+        };
+
+        let inputs = [
+            &mut self.auth_digest_username_text_input,
+            &mut self.auth_digest_password_text_input,
+            &mut self.auth_digest_domains_text_input,
+            &mut self.auth_digest_realm_text_input,
+            &mut self.auth_digest_nonce_text_input,
+            &mut self.auth_digest_opaque_text_input,
+        ];
+
+        for input in inputs {
+            input.last_area = to_screen(input.last_area);
+        }
+
+        for (index, field_area) in digest_auth_layout.iter().enumerate() {
+            self.hit(to_screen(*field_area), MouseTarget::AuthField(index));
+        }
     }
 }

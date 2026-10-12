@@ -5,3 +5,4 @@ pub(super) mod event_key_bindings;
 pub(super) mod events;
 pub mod utils;
 mod macros;
+pub mod mouse;

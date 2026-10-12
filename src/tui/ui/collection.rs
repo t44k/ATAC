@@ -8,6 +8,7 @@ use rayon::prelude::*;
 
 use crate::app::app::App;
 use crate::app::files::theme::THEME;
+use crate::tui::mouse::MouseTarget;
 
 impl<'a> App<'a> {
     pub(super) fn render_collections(&mut self, frame: &mut Frame, rect: Rect) {
@@ -19,7 +20,9 @@ impl<'a> App<'a> {
             })
             .collect();
 
-        
+
+        // Render the up to date items, so that clicks match what is displayed
+        self.collections_tree.items = items;
         let tree_items = self.collections_tree.items.clone();
         
         let collections_tree = Tree::new(&tree_items)
@@ -35,12 +38,12 @@ impl<'a> App<'a> {
                     .fg(THEME.read().ui.main_foreground_color)
             );
 
-        self.collections_tree.items = items;
-
         frame.render_stateful_widget(
             collections_tree,
             rect,
             &mut self.collections_tree.state
         );
+
+        self.hit(rect, MouseTarget::Collections);
     }
 }

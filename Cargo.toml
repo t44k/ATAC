@@ -133,6 +133,8 @@ uuid = { version = "=1.28.0", features = ["v4", "v7", "serde"] }
 base64 = "=0.23.1"
 ## Wrap text to max length
 textwrap = "0.16.4"
+## Display width of characters. Used to map mouse positions to text columns
+unicode-width = "0.2.0"
 
 # Tracing
 ## Log events

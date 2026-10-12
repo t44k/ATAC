@@ -107,7 +107,7 @@ impl<'a> App<'a> {
             if file_name.ends_with(".json") {
                 self.set_collections_from_file(path, CollectionFileFormat::Json);
             }
-            else if file_name.ends_with(".yaml") {
+            else if file_name.ends_with(".yaml") || file_name.ends_with(".yml") {
                 self.set_collections_from_file(path, CollectionFileFormat::Yaml);
             }
         }
