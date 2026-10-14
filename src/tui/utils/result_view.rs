@@ -58,8 +58,8 @@ impl ResultView {
         let alignment = logical_line.alignment;
 
         let mut text = String::new();
-        // Visual row and column of each char of `text`, indexed by char
-        let mut char_positions: Vec<(usize, usize)> = vec![];
+        // Visual row, column and width of each char of `text`, indexed by char
+        let mut char_positions: Vec<(usize, usize, usize)> = vec![];
 
         let mut row_spans: Vec<Span<'static>> = vec![];
         let mut row_cells: Vec<(usize, usize, char)> = vec![];
@@ -100,7 +100,7 @@ impl ResultView {
                 }
 
                 text.push(char);
-                char_positions.push((self.lines.len(), column));
+                char_positions.push((self.lines.len(), column, width));
                 row_cells.push((column, width, char));
                 column += width;
             }
@@ -124,10 +124,14 @@ impl ResultView {
         self.max_width = self.max_width.max(width);
     }
 
-    fn find_links(&mut self, text: &str, char_positions: &[(usize, usize)]) {
+    fn find_links(&mut self, text: &str, char_positions: &[(usize, usize, usize)]) {
         if !text.contains("http") {
             return;
         }
+
+        // Chars are counted from the previous match only, a long line can contain many links
+        let mut counted_bytes = 0;
+        let mut counted_chars = 0;
 
         for found in URL_REGEX.find_iter(text) {
             let url = found.as_str().trim_end_matches(['.', ',', ';', ':', '!', '?', ')', '\'', '"']);
@@ -136,18 +140,15 @@ impl ResultView {
                 continue;
             }
 
-            let first_char = text[..found.start()].chars().count();
+            counted_chars += text[counted_bytes..found.start()].chars().count();
+            counted_bytes = found.start();
+
+            let first_char = counted_chars;
             let char_count = url.chars().count();
 
             let mut segments: Vec<(usize, usize, usize)> = vec![];
 
-            for &(row, column) in char_positions.iter().skip(first_char).take(char_count) {
-                let width = self.cells[row]
-                    .iter()
-                    .find(|(c, _, _)| *c == column)
-                    .map(|(_, w, _)| *w)
-                    .unwrap_or(1);
-
+            for &(row, column, width) in &char_positions[first_char..first_char + char_count] {
                 match segments.last_mut() {
                     Some((last_row, _, end)) if *last_row == row => *end = column + width,
                     _ => segments.push((row, column, column + width))
@@ -261,6 +262,16 @@ mod tests {
     }
 
     #[test]
+    fn finds_several_links_on_a_line_after_wide_chars() {
+        let view = ResultView::new(vec![Line::raw("日本 https://a.io é https://b.io")], None);
+
+        assert_eq!(view.links.len(), 2);
+        assert_eq!(view.links[0].segments, vec![(0, 5, 17)]);
+        assert_eq!(view.links[1].url, "https://b.io");
+        assert_eq!(view.links[1].segments, vec![(0, 20, 32)]);
+    }
+
+    #[test]
     fn handles_wide_chars_and_tabs() {
         let view = ResultView::new(vec![Line::raw("日本\tx")], None);
 
@@ -268,3 +279,4 @@ mod tests {
         assert_eq!(view.text_between((0, 1), (0, 8)), "日本\tx");
     }
 }
+
