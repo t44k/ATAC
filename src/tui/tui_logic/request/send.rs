@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::Instant;
 use futures_util::SinkExt;
 use reqwest_websocket::CloseCode;
 use tokio::task;
@@ -10,6 +11,7 @@ use crate::app::business_logic::request::send::PreparedRequest;
 use crate::app::business_logic::request::ws::send::send_ws_request;
 use crate::models::auth::auth::Auth;
 use crate::models::protocol::protocol::Protocol;
+use crate::models::response::RequestResponse;
 
 impl App<'_> {
     pub async fn tui_send_request(&mut self) {
@@ -66,6 +68,19 @@ impl App<'_> {
             }
         };
 
+        // A new HTTP request replaces the previous result, the processing screen is displayed meanwhile
+        if let Protocol::HttpRequest(_) = selected_request.protocol {
+            selected_request.response = RequestResponse::default();
+            selected_request.is_pending = true;
+            selected_request.pending_since = Some(Instant::now());
+
+            self.syntax_highlighting.highlighted_body = None;
+            self.result_generation += 1;
+            self.result_vertical_scrollbar.top();
+            self.result_horizontal_scrollbar.top();
+            self.selection = None;
+        }
+
         let protocol = selected_request.protocol.clone();
         let local_selected_request = self.get_selected_request_as_local();
         let local_env = self.get_selected_env_as_local();
@@ -92,6 +107,7 @@ impl App<'_> {
                     }
 
                     selected_request.response = response;
+                    selected_request.pending_since = None;
 
                     *local_should_refresh_scrollbars.lock() = true;
                     return;
@@ -99,6 +115,8 @@ impl App<'_> {
                 Err(response_error) => {
                     let mut selected_request = local_selected_request.write();
                     selected_request.response.status_code = Some(response_error.to_string());
+                    selected_request.is_pending = false;
+                    selected_request.pending_since = None;
                     return;
                 }
             };

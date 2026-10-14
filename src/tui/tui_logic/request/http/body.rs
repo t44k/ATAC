@@ -69,8 +69,9 @@ impl App<'_> {
         let selection = self.body_form_table.selection.unwrap();
         let selected_request_index = &self.collections_tree.selected.unwrap();
 
-        if let Err(_) = self.toggle_form_data(selected_request_index.0, selected_request_index.1, None, selection.0) {
-            return;
+        match self.toggle_form_data(selected_request_index.0, selected_request_index.1, None, selection.0) {
+            Ok(enabled) => self.toast(format!("Form field {}", if enabled { "enabled" } else { "disabled" })),
+            Err(_) => return
         }
 
         self.update_inputs();

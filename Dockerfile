@@ -20,9 +20,9 @@ RUN case "$TARGETPLATFORM" in \
 COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --target $(cat rust_target.txt) --recipe-path recipe.json --zigbuild
 COPY . .
-RUN cargo zigbuild --release --target $(cat rust_target.txt) --bin atac && cp /app/target/$(cat rust_target.txt)/release/atac /atac
+RUN cargo zigbuild --release --target $(cat rust_target.txt) --bin attac && cp /app/target/$(cat rust_target.txt)/release/attac /attac
 
 FROM alpine:3.20 AS runtime
-COPY --from=builder /atac /atac
+COPY --from=builder /attac /attac
 WORKDIR /app
-ENTRYPOINT [ "/atac" ]
+ENTRYPOINT [ "/attac" ]

@@ -5,6 +5,7 @@ use ratatui::widgets::{Block, Borders};
 use ratatui::Frame;
 
 use crate::app::app::App;
+use crate::tui::mouse::MouseTarget;
 use crate::app::files::theme::THEME;
 use crate::tui::app_states::AppState::{EditingPostRequestScript, EditingPreRequestScript};
 use crate::tui::utils::stateful::text_input::MultiLineTextInput;
@@ -55,5 +56,7 @@ impl App<'_> {
         frame.render_widget(MultiLineTextInput(&mut self.script_console.pre_request_text_area, JS_SYNTAX_REF.clone()), scripts_layout[0]);
         frame.render_widget(inter_script_block, scripts_layout[1]);
         frame.render_widget(MultiLineTextInput(&mut self.script_console.post_request_text_area, JS_SYNTAX_REF.clone()), scripts_layout[2]);
+        self.hit(scripts_layout[0], MouseTarget::Script(0));
+        self.hit(scripts_layout[2], MouseTarget::Script(1));
     }
 }

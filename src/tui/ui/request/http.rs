@@ -1,6 +1,7 @@
 use crate::app::app::App;
 use crate::app::files::theme::THEME;
 use crate::models::request::Request;
+use crate::models::protocol::protocol::Protocol;
 use crate::tui::app_states::AppState;
 use crate::tui::ui::views::RequestView;
 use ratatui::layout::Direction::{Horizontal, Vertical};
@@ -9,6 +10,7 @@ use ratatui::prelude::Stylize;
 use ratatui::widgets::{Block, Borders, Padding, Paragraph};
 use ratatui::Frame;
 use crate::tui::utils::stateful::text_input::SingleLineTextInput;
+use crate::tui::mouse::MouseTarget;
 
 impl App<'_> {
     pub fn render_http_request(&mut self, frame: &mut Frame, rect: Rect, request: Request) {
@@ -31,6 +33,8 @@ impl App<'_> {
             .fg(THEME.read().ui.font_color);
 
         frame.render_widget(request_name_paragraph, request_layout[0]);
+        self.hit(request_layout[0], MouseTarget::Text);
+        self.render_send_button(frame, request_layout[0], &request);
 
         // REQUEST HEADER LAYOUT
 
@@ -63,11 +67,13 @@ impl App<'_> {
 
         frame.render_widget(method_block, request_header_layout[0]);
         frame.render_widget(method_paragraph, method_area);
+        self.hit(request_header_layout[0], MouseTarget::Method);
 
         // REQUEST URL
 
         self.url_text_input.display_cursor = matches!(self.state, AppState::EditingRequestUrl);
         frame.render_widget(SingleLineTextInput(&mut self.url_text_input), request_header_layout[1]);
+        self.hit(request_header_layout[1], MouseTarget::Url);
 
         // REQUEST MAIN LAYOUT
 
@@ -121,5 +127,31 @@ impl App<'_> {
             frame.render_widget(result_block, request_main_layout[1]);
             self.render_request_result(frame, result_block_area, &request);
         }
+    }
+
+    /// Clickable button sending the request, on the right of the request name
+    pub(super) fn render_send_button(&mut self, frame: &mut Frame, area: Rect, request: &Request) {
+        let label = match (&request.protocol, request.is_pending, request.is_connected()) {
+            (_, true, _) => " ■ Cancel ",
+            (Protocol::HttpRequest(_), false, _) => " ▶ Send ",
+            (_, false, true) => " ■ Disconnect ",
+            (_, false, false) => " ▶ Connect ",
+        };
+
+        let width = label.chars().count() as u16;
+
+        if area.width <= width {
+            return;
+        }
+
+        let button_area = Rect::new(area.right() - width, area.y, width, 1);
+
+        let button = Paragraph::new(label)
+            .fg(THEME.read().ui.font_color)
+            .bg(THEME.read().ui.main_background_color)
+            .bold();
+
+        frame.render_widget(button, button_area);
+        self.hit(button_area, MouseTarget::SendButton);
     }
 }

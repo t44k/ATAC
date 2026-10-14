@@ -1,11 +1,15 @@
 use std::io::Stdout;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use parking_lot::{Mutex, RwLock};
 use ratatui::backend::{Backend, CrosstermBackend};
-use ratatui::crossterm::terminal::disable_raw_mode;
+use ratatui::crossterm::event::{DisableBracketedPaste, DisableMouseCapture};
+use ratatui::crossterm::execute;
+use ratatui::crossterm::terminal::{disable_raw_mode, LeaveAlternateScreen};
+use ratatui::layout::Rect;
 use ratatui::Terminal;
+use ratatui_image::picker::Picker;
 use strum::VariantArray;
 use throbber_widgets_tui::ThrobberState;
 
@@ -31,8 +35,9 @@ use crate::tui::utils::stateful::text_input::TextInput;
 use crate::tui::utils::stateful::text_input_selection::TextInputSelection;
 use crate::tui::utils::stateful::validation_popup::ValidationPopup;
 use crate::tui::utils::syntax_highlighting::SyntaxHighlighting;
-#[cfg(feature = "clipboard")]
-use arboard::Clipboard;
+use crate::tui::mouse::{MouseState, MouseTarget};
+use crate::tui::mouse::selection::Selection;
+use crate::tui::utils::result_view::ResultView;
 use ratatui::prelude::{Line, Stylize};
 use crate::app::files::theme::THEME;
 
@@ -146,6 +151,14 @@ pub struct App<'a> {
 
     pub last_messages_area_size: (u16, u16),
 
+    /// Wrapped result lines, rebuilt when the key changes
+    pub result_view: ResultView,
+    pub result_view_key: Option<ResultViewKey>,
+    /// Incremented each time the result content changes
+    pub result_generation: u64,
+    /// Result text area of the last frame
+    pub last_result_area: Rect,
+
     /* Scripts */
     
     pub script_console: ScriptConsole,
@@ -157,8 +170,29 @@ pub struct App<'a> {
     pub export_request: ChoicePopup<ExportFormat>,
     pub display_request_export: DisplayPopup,
 
-    #[cfg(feature = "clipboard")]
-    pub clipboard: Option<Clipboard>
+    /* Mouse */
+
+    /// Areas drawn on the last frame, topmost last
+    pub hit_map: Vec<(Rect, MouseTarget)>,
+    pub mouse: MouseState,
+    pub selection: Option<Selection>,
+    /// Text of a screen selection, read from the last frame
+    pub selection_text: Option<String>,
+    /// Link under the mouse cursor on the last frame
+    pub hovered_link: Option<String>,
+
+    /// Short notification displayed in the footer
+    pub toast: Option<(String, Instant)>,
+    pub help_scroll: usize,
+    pub image_picker: Option<Picker>,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub struct ResultViewKey {
+    pub generation: u64,
+    pub request: Option<(usize, usize)>,
+    pub tab: RequestResultTabs,
+    pub wrap_width: Option<usize>,
 }
 
 impl App<'_> {
@@ -314,6 +348,10 @@ impl App<'_> {
             result_horizontal_scrollbar: StatefulScrollbar::default(),
 
             last_messages_area_size: (0, 0),
+            result_view: ResultView::default(),
+            result_view_key: None,
+            result_generation: 0,
+            last_result_area: Rect::default(),
             script_console: ScriptConsole {
                 pre_request_text_area: TextInput::new(None),
                 post_request_text_area: TextInput::new(None),
@@ -329,8 +367,15 @@ impl App<'_> {
             },
             display_request_export: DisplayPopup::default(),
 
-            #[cfg(feature = "clipboard")]
-            clipboard: Clipboard::new().ok(),
+            hit_map: vec![],
+            mouse: MouseState::default(),
+            selection: None,
+            selection_text: None,
+            hovered_link: None,
+
+            toast: None,
+            help_scroll: 0,
+            image_picker: None,
         })
     }
 
@@ -346,11 +391,30 @@ impl App<'_> {
         Ok(())
     }
 
+    /// Display a short notification in the footer
+    pub fn toast<T: Into<String>>(&mut self, message: T) {
+        self.toast = Some((message.into(), Instant::now()));
+    }
+
+    /// Copy text to the clipboard and notify the user
+    pub fn copy_to_clipboard(&mut self, text: &str, message: &str) {
+        if text.is_empty() {
+            self.toast("Nothing to copy");
+            return;
+        }
+
+        crate::app::clipboard::copy_text(text);
+
+        let chars = text.chars().count();
+        self.toast(format!("{message} ({chars} char{})", if chars > 1 { "s" } else { "" }));
+    }
+
     pub fn chain_hook(&mut self) -> &mut Self {
         let original_hook = std::panic::take_hook();
 
         std::panic::set_hook(Box::new(move |panic| {
-            disable_raw_mode().unwrap();
+            let _ = execute!(std::io::stdout(), DisableMouseCapture, DisableBracketedPaste, LeaveAlternateScreen);
+            let _ = disable_raw_mode();
             original_hook(panic);
         }));
 

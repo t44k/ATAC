@@ -6,6 +6,7 @@ use ratatui::style::Stylize;
 use ratatui::widgets::{Block, Borders, Clear, Paragraph};
 
 use crate::app::app::App;
+use crate::tui::mouse::MouseTarget;
 use crate::app::files::theme::THEME;
 use crate::tui::utils::centered_rect::centered_rect;
 impl App<'_> {
@@ -37,8 +38,11 @@ impl App<'_> {
         }
 
         frame.render_widget(Clear, area);
+        self.hit(area, MouseTarget::Popup);
         frame.render_widget(popup_block, area);
         frame.render_widget(no_paragraph, deleting_request_layout[0]);
         frame.render_widget(yes_paragraph, deleting_request_layout[1]);
+        self.hit(deleting_request_layout[0], MouseTarget::PopupChoice(0));
+        self.hit(deleting_request_layout[1], MouseTarget::PopupChoice(1));
     }
 }

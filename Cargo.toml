@@ -1,6 +1,6 @@
 [package]
-name = "atac"
-description = "Arguably a Terminal API Client. Feature-full, free, open-source, offline and account-less."
+name = "attac"
+description = "ATTAC, a fork of ATAC (Arguably a Terminal API Client) with mouse support. Feature-full, free, open-source, offline and account-less."
 version = "0.24.0"
 authors = ["julien-cpsn"]
 edition = "2024"
@@ -9,7 +9,7 @@ license = "MIT"
 readme = "README.md"
 documentation = "https://atac.julien-cpsn.com/"
 homepage = "https://github.com/Julien-cpsn/ATAC"
-repository = "https://github.com/Julien-cpsn/ATAC"
+repository = "https://github.com/t44k/ATAC"
 keywords = ["API", "Client", "TUI", "Postman", "Insomnia"]
 
 exclude = [
@@ -133,6 +133,8 @@ uuid = { version = "=1.28.0", features = ["v4", "v7", "serde"] }
 base64 = "=0.23.1"
 ## Wrap text to max length
 textwrap = "0.16.4"
+## Display width of characters. Used to map mouse positions to text columns
+unicode-width = "0.2.0"
 
 # Tracing
 ## Log events

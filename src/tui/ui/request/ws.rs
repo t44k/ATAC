@@ -5,6 +5,7 @@ use ratatui::widgets::{Block, Borders, Padding, Paragraph};
 use ratatui::Frame;
 
 use crate::app::app::App;
+use crate::tui::mouse::MouseTarget;
 use crate::app::files::theme::THEME;
 use crate::models::protocol::protocol::Protocol;
 use crate::models::request::Request;
@@ -33,6 +34,8 @@ impl App<'_> {
             .fg(THEME.read().ui.font_color);
 
         frame.render_widget(request_name_paragraph, request_layout[0]);
+        self.hit(request_layout[0], MouseTarget::Text);
+        self.render_send_button(frame, request_layout[0], &request);
 
         // REQUEST HEADER LAYOUT
 
@@ -80,11 +83,13 @@ impl App<'_> {
 
         frame.render_widget(connection_status_block, request_header_layout[0]);
         frame.render_widget(connection_status_paragraph, connection_status_area);
+        self.hit(request_header_layout[0], MouseTarget::SendButton);
 
         // REQUEST URL
 
         self.url_text_input.display_cursor = matches!(self.state, AppState::EditingRequestUrl);
         frame.render_widget(SingleLineTextInput(&mut self.url_text_input), request_header_layout[1]);
+        self.hit(request_header_layout[1], MouseTarget::Url);
         
         // REQUEST MAIN LAYOUT
 

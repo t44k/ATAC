@@ -1,5 +1,10 @@
-ATAC ⚔📩
+ATTAC ⚔📩
 ===
+
+> **ATTAC** is a fork of [ATAC](https://github.com/Julien-cpsn/ATAC) with mouse support (clickable and scrollable panels),
+> text selection and copy everywhere, link hints in the results and simpler key bindings.
+> The executable is `attac`, it reads the usual ATAC files (`~/.config/atac`, `atac.toml`, `keybindings.toml`, `theme.toml`, `ATAC_*` variables).
+> See [Mouse, selection and keys](#mouse-selection-and-keys). The rest of this README is the upstream ATAC documentation.
 
 [![Rust](https://github.com/Julien-cpsn/ATAC/actions/workflows/rust.yml/badge.svg)](https://github.com/Julien-cpsn/ATAC/actions/workflows/rust.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -24,6 +29,10 @@ ATAC ⚔📩
   * [TODO v1.0.0](#todo-v100)
   * [TODO v2.0.0](#todo-v200)
 - [Documentation](#documentation)
+- [Mouse, selection and keys](#mouse-selection-and-keys)
+  * [Mouse](#mouse)
+  * [Default keys](#default-keys)
+  * [Configuration files](#configuration-files)
 - [Others](#others)
   * [Vim key-bindings](#vim-key-bindings)
   * [NeoVim integration](#neovim-integration)
@@ -231,6 +240,7 @@ cargo run -- -h
 | - cURL import                                                                  | :white_check_mark:                                                                  | :white_check_mark:   | :white_check_mark:       |
 | **Themes**                                                                     | :white_check_mark:                                                                  | :white_check_mark:   | :white_check_mark:       |
 | **Remappable key bindings**                                                    | :white_check_mark:                                                                  | :white_check_mark:   | :white_check_mark:       |
+| **Mouse support, text selection and copy**                                     | :white_check_mark:                                                                  | :white_check_mark:   | :white_check_mark:       |
 
 ### TODO v1.0.0
 
@@ -261,6 +271,68 @@ cargo run -- -h
 Here is the documentation: https://atac.julien-cpsn.com/
 
 If you think something is missing, please contribute!
+
+## Mouse, selection and keys
+
+### Mouse
+
+| Action                       | Effect                                                                           |
+|------------------------------|----------------------------------------------------------------------------------|
+| Click                        | Open a request, switch tab, edit a field, select a table cell, send with ▶ Send  |
+| Click the selected cell      | Edit the table cell (a double click works too)                                   |
+| Click elsewhere              | Save the field being edited, or close the popup                                  |
+| Wheel                        | Scroll the panel under the mouse (Shift + wheel scrolls horizontally)            |
+| Drag                         | Select text in any panel, the result scrolls while dragging past its edge        |
+| Right click                  | Copy the selection                                                               |
+| Hover a link in the result   | Underlines it and shows a `Ctrl-c copy link` hint, `Ctrl-c` copies the link     |
+| Double click a result tab    | Maximize the result panel, again to restore                                      |
+| Click a key in the footer    | Run it                                                                           |
+| Shift + drag                 | Native terminal selection (if supported by your terminal)                        |
+
+Copied text goes to the system clipboard, or through the terminal (OSC 52) when there is none, e.g. over SSH.
+
+### Default keys
+
+| Action                                  | Keys                                              |
+|-----------------------------------------|---------------------------------------------------|
+| Help                                    | `?`, `F1`                                         |
+| Quit                                    | `q` (from the collections), `Ctrl-q` (anywhere)   |
+| Copy the mouse selection / hovered link | `Ctrl-c`                                          |
+| Copy the whole result tab               | `y`                                               |
+| Send / cancel the request               | `Space`, `F5`                                     |
+| Edit the URL                            | `Ctrl-l`, `u`                                     |
+| Change the HTTP method                  | `m`                                               |
+| Next / previous request tab             | `Tab` / `Shift-Tab`                               |
+| Next / previous result tab              | `]` / `[`                                         |
+| Change auth, body or message type       | `Ctrl-t` on that tab                              |
+| Create / rename / delete / duplicate    | `n` / `r`, `F2` / `d`, `Delete` / `Ctrl-d`        |
+| Toggle a param, header or form field    | `t`                                               |
+| Scroll the result                       | Wheel, `PageUp`, `PageDown`, `Home`, `End`, `Ctrl-arrows` |
+| Back / cancel                           | `Esc`                                             |
+| Text inputs                             | `Ctrl-c`/`Ctrl-x`/`Ctrl-v`, `Ctrl-a`, `Shift-arrows`, `Ctrl-z`/`Ctrl-y`, `Enter` or `Ctrl-s` to save |
+
+### Configuration files
+
+ATAC uses the first app directory found among: `--directory <dir>`, the `ATAC_MAIN_DIR` environment variable, the current directory if it contains an `atac.toml`, and the user config directory (`~/.config/atac` on Linux).
+
+The following files are then read by default:
+
+| File                                       | Content                                                                 |
+|--------------------------------------------|-------------------------------------------------------------------------|
+| `*.json`, `*.yaml`, `*.yml`                | Collections                                                             |
+| `.env.<name>`                              | Environments                                                            |
+| `atac.toml`, then `global.toml` in the config directory | Configuration (proxy, syntax highlighting, wrapping...)    |
+| `keybindings.toml` (or `ATAC_KEY_BINDINGS`)| Key bindings, in the app directory or the config directory             |
+| `theme.toml` (or `ATAC_THEME`)             | Theme, in the app directory or the config directory                    |
+
+Key bindings and theme files only need the values to change, e.g. `keybindings.toml`:
+
+```toml
+[keybindings.main_menu]
+exit = "x"
+```
+
+See [example_resources/key_bindings](example_resources/key_bindings) and [example_resources/themes](example_resources/themes) for complete files. Older complete files keep working.
 
 ## Others
 

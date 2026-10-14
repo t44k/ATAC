@@ -1,3 +1,4 @@
+use std::time::Instant;
 use anyhow::anyhow;
 use lazy_static::lazy_static;
 use ratatui::prelude::{Line, Modifier, Span};
@@ -46,6 +47,10 @@ pub struct Request {
     #[serde(skip)]
     pub is_pending: bool,
 
+    /// When the pending request was sent, used to display the elapsed time
+    #[serde(skip)]
+    pub pending_since: Option<Instant>,
+
     #[serde(skip)]
     pub cancellation_token: CancellationToken,
 }
@@ -92,7 +97,7 @@ lazy_static! {
         },
         KeyValue {
             enabled: true,
-            data: (String::from("user-agent"), format!("ATAC/v{}", env!("CARGO_PKG_VERSION"))),
+            data: (String::from("user-agent"), format!("ATTAC/v{}", env!("CARGO_PKG_VERSION"))),
         },
         KeyValue {
             enabled: true,

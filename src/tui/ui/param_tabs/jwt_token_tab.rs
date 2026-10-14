@@ -1,4 +1,5 @@
 use crate::app::app::App;
+use crate::tui::mouse::MouseTarget;
 use crate::app::files::theme::THEME;
 use crate::tui::app_states::AppState::{EditingRequestAuthJwtSecret, EditingRequestAuthJwtPayload, SelectedRequest};
 use crate::tui::utils::syntax_highlighting::JSON_SYNTAX_REF;
@@ -107,5 +108,9 @@ impl App<'_> {
         frame.render_widget(secret_type_paragraph, jwt_token_auth_layout[1]);
         frame.render_widget(SingleLineTextInput(&mut self.auth_jwt_secret_text_input), jwt_token_auth_layout[2]);
         frame.render_widget(MultiLineTextInput(&mut self.auth_jwt_payload_text_area, JSON_SYNTAX_REF.clone()), jwt_token_auth_layout[3]);
+
+        for (index, area) in jwt_token_auth_layout.iter().enumerate() {
+            self.hit(*area, MouseTarget::AuthField(index));
+        }
     }
 }

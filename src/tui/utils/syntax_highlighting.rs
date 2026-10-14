@@ -30,8 +30,8 @@ lazy_static! {
 pub fn highlight(string: &str, extension: &str) -> Option<Vec<Line<'static>>> {
     let syntax = match extension {
         "json" => &*JSON_SYNTAX_REF,
-        "xml" => &*HTML_SYNTAX_REF,
-        "html" => &*XML_SYNTAX_REF,
+        "xml" => &*XML_SYNTAX_REF,
+        "html" => &*HTML_SYNTAX_REF,
         "js" => &*JS_SYNTAX_REF,
         _ => match SYNTAX_SET.find_syntax_by_extension(&extension) {
             None => return None,

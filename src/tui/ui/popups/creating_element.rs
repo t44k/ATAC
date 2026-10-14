@@ -5,6 +5,7 @@ use ratatui::style::Stylize;
 use ratatui::widgets::{Block, Borders, Clear, Paragraph};
 
 use crate::app::app::App;
+use crate::tui::mouse::MouseTarget;
 use crate::app::files::theme::THEME;
 use crate::tui::utils::centered_rect::centered_rect;
 
@@ -37,7 +38,12 @@ impl App<'_> {
             .split(area);
 
         frame.render_widget(Clear, area);
+        self.hit(area, MouseTarget::Popup);
         frame.render_widget(popup_block, area);
+
+        for index in 0..self.creation_popup.choices.len() {
+            self.hit(creating_element_layout[index], MouseTarget::PopupChoice(index));
+        }
 
         for (index, element) in self.creation_popup.choices.iter().enumerate() {
             let mut paragraph = Paragraph::new(element.clone()).centered().fg(THEME.read().ui.font_color);

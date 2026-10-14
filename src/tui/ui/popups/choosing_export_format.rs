@@ -1,4 +1,5 @@
 use crate::app::app::App;
+use crate::tui::mouse::MouseTarget;
 use crate::tui::utils::centered_rect::centered_rect;
 use ratatui::Frame;
 use ratatui::layout::Direction::Horizontal;
@@ -36,7 +37,12 @@ impl App<'_> {
             .split(area);
 
         frame.render_widget(Clear, area);
+        self.hit(area, MouseTarget::Popup);
         frame.render_widget(popup_block, area);
+
+        for index in 0..self.export_request.choices.len() {
+            self.hit(creating_element_layout[index], MouseTarget::PopupChoice(index));
+        }
 
         for (index, element) in self.export_request.choices.iter().enumerate() {
             let mut paragraph = Paragraph::new(element.to_string()).centered();

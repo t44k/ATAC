@@ -21,9 +21,10 @@ use crate::panic_error;
 #[command(
     version,
     about,
-    long_about = r#"ATAC is Arguably a Terminal API Client.
+    long_about = r#"ATTAC is a fork of ATAC (Arguably a Terminal API Client) with mouse support, text selection and simpler key bindings.
 It is based on well-known clients such as Postman, Insomnia, or even Bruno, but inside your terminal without any specific graphical environment needed.
-The philosophy of ATAC is to be free, account-less, and offline for now and forever."#,
+The philosophy of ATTAC is to be free, account-less, and offline for now and forever.
+It reads the ATAC files: collections, environments, atac.toml, keybindings.toml and theme.toml."#,
     styles = Styles::styled()
 )]
 pub struct Args {
@@ -55,7 +56,7 @@ pub struct Args {
 }
 
 /*
-atac
+attac
   - collection
       - list
       - info
@@ -115,7 +116,7 @@ pub enum Command {
     /// Create a completion file
     Completions(CompletionsCommand),
 
-    /// Generate ATAC man page
+    /// Generate ATTAC man page
     Man(ManCommand),
 }
 
@@ -184,9 +185,13 @@ fn choose_app_directory(path_buf: Option<PathBuf>, config_directory: &Option<Pat
             Ok(env_directory) => expand_tilde(PathBuf::from(env_directory)),
             
             // No ATAC_MAIN_DIR env variable
-            Err(_) => match config_directory {
-                Some(config_directory) => config_directory.clone(),
-                None => panic_error("No directory provided, provide one either with `--directory <dir>` or via the environment variable `ATAC_MAIN_DIR`")
+            Err(_) => match env::current_dir() {
+                // A project directory with its own ATAC config
+                Ok(current_directory) if current_directory.join("atac.toml").is_file() => current_directory,
+                _ => match config_directory {
+                    Some(config_directory) => config_directory.clone(),
+                    None => panic_error("No directory provided, provide one either with `--directory <dir>` or via the environment variable `ATAC_MAIN_DIR`")
+                }
             }
         }
     }

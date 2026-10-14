@@ -118,31 +118,28 @@ impl App<'_> {
         Ok(())
     }
 
-    pub fn toggle_form_data(&mut self, collection_index: usize, request_index: usize, state: Option<bool>, row: usize) -> anyhow::Result<()> {
+    pub fn toggle_form_data(&mut self, collection_index: usize, request_index: usize, state: Option<bool>, row: usize) -> anyhow::Result<bool> {
         let local_selected_request = self.get_request_as_local_from_indexes(&(collection_index, request_index));
 
-        {
+        let new_state = {
             let mut selected_request = local_selected_request.write();
             let selected_http_request = selected_request.get_http_request_mut()?;
             let form = selected_http_request.body.get_form_mut()?;
 
             let new_state = match state {
-                None => {
-                    let state = !form[row].enabled;
-                    // Better user feedback
-                    println!("{state}");
-                    state
-                },
+                None => !form[row].enabled,
                 Some(state) => state
             };
 
             info!("Body form key state set to \"{new_state}\"");
 
             form[row].enabled = new_state;
-        }
+
+            new_state
+        };
 
         self.save_collection_to_file(collection_index);
-        Ok(())
+        Ok(new_state)
     }
 
     pub fn duplicate_form_data(&mut self, collection_index: usize, request_index: usize, row: usize) -> anyhow::Result<()> {

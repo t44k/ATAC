@@ -65,7 +65,7 @@ jobs:
         if: endsWith(matrix.target, 'windows-msvc')
       - uses: taiki-e/upload-rust-binary-action@v1
         with:
-          bin: atac
+          bin: attac
           target: ${{ matrix.target }}
           archive: $bin-$tag-$target # https://github.com/taiki-e/upload-rust-binary-action?tab=readme-ov-file#example-workflow-customize-archive-name
           tar: all
@@ -106,7 +106,7 @@ jobs:
 
           # Custom install command for your formula.
           # Required - string
-          install: 'bin.install "atac"'
+          install: 'bin.install "attac"'
 
           # Custom test command for your formula so you can run `brew test`.
           # Optional - string

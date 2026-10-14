@@ -4,7 +4,8 @@ use std::fmt::Display;
 use std::io::stdout;
 use std::process::exit;
 
-use ratatui::crossterm::ExecutableCommand;
+use ratatui::crossterm::execute;
+use ratatui::crossterm::event::{DisableBracketedPaste, DisableMouseCapture};
 use ratatui::crossterm::style::Stylize;
 use ratatui::crossterm::terminal::{disable_raw_mode, LeaveAlternateScreen};
 use ratatui::backend::CrosstermBackend;
@@ -53,8 +54,10 @@ async fn run_tui<'a>(app: &mut App<'a>) -> anyhow::Result<()> {
         .run(terminal)
         .await?;
 
-    stdout().execute(LeaveAlternateScreen)?;
+    execute!(stdout(), DisableMouseCapture, DisableBracketedPaste, LeaveAlternateScreen)?;
     disable_raw_mode()?;
+
+    app::clipboard::shutdown();
     
     Ok(())
 }

@@ -17,6 +17,8 @@ pub struct StatefulCustomTable<'a> {
     pub selection_text_input: TextInput,
 
     pub is_editing: bool,
+    /// Area of the rows on the last frame, used for mouse clicks
+    pub last_rows_area: Rect,
     pub empty_rows_lines: Vec<Line<'a>>,
     pub default_key: &'static str,
     pub default_value: &'static str,
@@ -31,6 +33,7 @@ impl<'a> StatefulCustomTable<'a> {
             rows: vec![],
             selection_text_input: TextInput::new(None),
             is_editing: false,
+            last_rows_area: Rect::default(),
             empty_rows_lines,
             default_key,
             default_value,
@@ -138,12 +141,34 @@ impl<'a> StatefulCustomTable<'a> {
     pub fn is_selected(&self) -> bool {
         return self.selection.is_some();
     }
+
+    /// (row, column) of the cell drawn at a screen position on the last frame
+    pub fn cell_at(&self, position: ratatui::layout::Position) -> Option<(usize, usize)> {
+        let area = self.last_rows_area;
+
+        if self.selection.is_none() || !area.contains(position) {
+            return None;
+        }
+
+        let row = self.left_state.offset() + (position.y - area.y) as usize;
+        let column = match position.x < area.x + area.width / 2 {
+            true => 0,
+            false => 1
+        };
+
+        match row < self.rows.len() {
+            true => Some((row, column)),
+            false => None
+        }
+    }
 }
 
 impl<'a> StatefulWidget for &'a mut StatefulCustomTable<'_> {
     type State = (Vec<ListItem<'a>>, Vec<ListItem<'a>>);
 
     fn render(self, area: Rect, buf: &mut Buffer, rows: &mut Self::State) where Self: Sized {
+        self.last_rows_area = Rect::default();
+
         match self.selection {
             None => {
                 let headers_paragraph = Paragraph::new(self.empty_rows_lines.clone()).centered();
@@ -191,6 +216,8 @@ impl<'a> StatefulWidget for &'a mut StatefulCustomTable<'_> {
                 form_value.render(inner_layout[1], buf);
 
                 let horizontal_margin = 2;
+
+                self.last_rows_area = layout[1];
 
                 let table_layout = Layout::new(
                     Horizontal,

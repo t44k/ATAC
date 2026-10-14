@@ -16,7 +16,7 @@ pub fn generate_man_page() -> anyhow::Result<()> {
         Some(path) => path
     };
     
-    fs::write(path.join("atac.1"), buffer)?;
+    fs::write(path.join("attac.1"), buffer)?;
     
     println!("Man page generated into \"{}\"", path.display());
 

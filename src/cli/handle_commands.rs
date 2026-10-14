@@ -104,7 +104,7 @@ impl App<'_> {
                         KeyCommand::Rename { new_key, .. } => self.modify_request_query_param(collection_index, request_index, new_key.clone(), 0, query_param_index),
                         _ => unreachable!()
                     },
-                    KeyValueCommand::Toggle { state, .. } => self.toggle_query_param(collection_index, request_index, state.clone(), query_param_index),
+                    KeyValueCommand::Toggle { state, .. } => self.toggle_query_param(collection_index, request_index, state.clone(), query_param_index).map(|new_state| print_toggled_state(state, new_state)),
                     _ => unreachable!()
                 }
             },
@@ -134,7 +134,7 @@ impl App<'_> {
                         KeyCommand::Rename { new_key, .. } => self.modify_request_header(collection_index, request_index, new_key.clone(), 0, header_index),
                         _ => unreachable!()
                     },
-                    KeyValueCommand::Toggle { state, .. } => self.toggle_header(collection_index, request_index, state.clone(), header_index),
+                    KeyValueCommand::Toggle { state, .. } => self.toggle_header(collection_index, request_index, state.clone(), header_index).map(|new_state| print_toggled_state(state, new_state)),
                     _ => unreachable!()
                 }
             },
@@ -163,7 +163,7 @@ impl App<'_> {
                             KeyCommand::Delete { .. } => self.delete_form_data(collection_index, request_index, form_data_index),
                             KeyCommand::Rename { new_key, .. } => self.modify_request_form_data(collection_index, request_index, new_key.clone(), 0, form_data_index),
                         },
-                        KeyValueCommand::Toggle { state, .. } => self.toggle_form_data(collection_index, request_index, state.clone(), form_data_index),
+                        KeyValueCommand::Toggle { state, .. } => self.toggle_form_data(collection_index, request_index, state.clone(), form_data_index).map(|new_state| print_toggled_state(state, new_state)),
                         _ => unreachable!()
                     }
                 }
@@ -197,5 +197,12 @@ impl App<'_> {
                 KeyCommand::Rename { key, new_key } => self.rename_env_key(env_index, key, new_key),
             }
         }
+    }
+}
+
+/// Feedback when the state was flipped instead of given
+fn print_toggled_state(state: &Option<bool>, new_state: bool) {
+    if state.is_none() {
+        println!("{new_state}");
     }
 }

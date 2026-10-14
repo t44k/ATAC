@@ -27,7 +27,8 @@ impl App<'_> {
         )
             .split(inner_block_area);
 
-        let title_length = 16;
+        // 4 columns per letter
+        let title_length = 20;
 
         let title_layout = Layout::new(
             Horizontal,
@@ -42,7 +43,7 @@ impl App<'_> {
         let title = BigTextBuilder::default()
             .pixel_size(PixelSize::Quadrant)
             .lines([
-                "ATAC".into(),
+                "ATTAC".into(),
             ])
             .style(Style::new().fg(THEME.read().ui.font_color))
             .build();
@@ -51,7 +52,7 @@ impl App<'_> {
         let welcome_to = Paragraph::new("Welcome to")
             .centered()
             .fg(THEME.read().ui.secondary_foreground_color);
-        let description = Paragraph::new("{A}rguably a {T}erminal {A}PI {C}lient")
+        let description = Paragraph::new("{A}rguably {T}he {T}erminal {A}PI {C}lient")
             .centered()
             .fg(THEME.read().ui.main_foreground_color);
 

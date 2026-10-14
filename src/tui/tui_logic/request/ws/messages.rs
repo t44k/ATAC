@@ -1,12 +1,10 @@
 use chrono::Local;
 use futures_util::SinkExt;
 use reqwest_websocket::{Bytes, CloseCode};
-use textwrap::wrap;
 use tracing::info;
 use crate::app::app::App;
 use crate::models::protocol::ws::message_type::{next_message_type, MessageType};
 use crate::models::protocol::ws::ws::{Message, Sender};
-use crate::tui::tui_logic::request::messages::get_displayed_messages;
 
 impl App<'_> {
     pub async fn tui_send_request_message(&mut self) {
@@ -80,32 +78,5 @@ impl App<'_> {
         }
 
         self.save_collection_to_file(selected_request_index.0);
-    }
-
-    pub fn get_messages_lines_count(&self) -> usize {
-        let local_selected_request = self.get_selected_request_as_local();
-        let selected_request = local_selected_request.read();
-        let displayed_messages = get_displayed_messages(&selected_request);
-
-        let mut line_count = 0;
-        let mut last_sender = None;
-
-        for message in &displayed_messages {
-            let content = &message.content;
-            let max_length = self.get_max_line_length(content);
-            let lines = wrap(content, max_length);
-
-            match message.sender {
-                Sender::You => line_count += lines.len() + 1,
-                Sender::Server => match last_sender == Some(&message.sender) {
-                    true => line_count += lines.len() + 1,
-                    false => line_count += lines.len() + 2,
-                }
-            }
-
-            last_sender = Some(&message.sender);
-        }
-
-        line_count
     }
 }
